@@ -11,6 +11,9 @@ build/
 dist/
 *.spec
 
+# scratch folder the launcher uses for PyInstaller's onefile unpack (启动.bat)
+tmp/
+
 # local runtime state (written to %LOCALAPPDATA%\KenoBOT when packaged)
 data/webapp/
 data/_archive/
