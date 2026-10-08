@@ -31,3 +31,4 @@ output/
 # generated report payloads (the .md summaries are tracked)
 reports/**/*.json
 reports/**/*.csv
+/演示视频.mp4
