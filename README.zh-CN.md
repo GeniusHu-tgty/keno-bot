@@ -1,17 +1,23 @@
 # Keno BOT　中文说明
 
+[![lang](https://img.shields.io/badge/English-blue.svg)](README.md)
+[![lang](https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-brightgreen.svg)](#)
+[![lang](https://img.shields.io/badge/%E6%97%A5%E6%9C%AC%E8%AA%9E-green.svg)](README.ja.md)
+[![lang](https://img.shields.io/badge/Espa%C3%B1ol-orange.svg)](README.es.md)
+[![lang](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-purple.svg)](README.ru.md)
+[![lang](https://img.shields.io/badge/%ED%95%9C%EA%B5%AD%EC%96%B4-yellow.svg)](README.ko.md)
+
 [![License: GPL v2](https://img.shields.io/badge/license-GPLv2-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#快速开始)
 [![Tests](https://img.shields.io/badge/tests-110%20passing-brightgreen.svg)](CONTRIBUTING.md)
-[![English](https://img.shields.io/badge/README-English-blue.svg)](README.md)
 
 **Keno BOT** 是一个只针对 **Keno** 的本地研究台 + 自动投注机器人。
 
 * 把平台的**可验证公平性**种子链在本地完整复算（`server_seed` / `client_seed` / `nonce`，HMAC-SHA256），逐字节与官方计算器一致，一条命令就能自证。
 * 把平台的 **40 档官方赔率**逐档审计，而不是照抄（实测 RTP 98.65% – 99.07%）。
-* 用**零模型**（公平超几何分布）回测各种下注策略，让你看到结果分布的形状，而不是一张盈利截图。
-* 在你自己明确打开开关之后，可以通过**你自己的 Chrome**（CDP）操作**你自己的**真实账户自动下注——默认是纯模拟，真钱必须显式开启。
+* 用**零模型**（公平超几何分布）测量各种下注策略，让你看到结果分布的形状，而不是一张盈利截图。
+* 在你自己明确打开开关之后，可以通过**你自己的 Chrome**（CDP）操作**你自己的**账号自动下注——默认是纯模拟，真钱必须显式开启。
 
 只做 Keno。不做预测、不接 AI 选号、不承诺任何收益。
 
@@ -24,9 +30,9 @@
 | 常见脚本 | Keno BOT |
 | --- | --- |
 | 一把锤子：猜热号、追冷号、倍投 | 先给一把尺子：单注 RTP、方差、期望值在本地就能算出来 |
-| 只晒盈利截图 | 真钱账本全量落地：流水、回收、回撤、连败、分位数，包括亏的那些 |
 | 赔率靠口口相传 | 官方 40 档赔率逐档复核，自建表与官方表的差异列成对照 |
 | RNG 只能「相信平台」 | HMAC-SHA256 种子链本地复算，逐字节对齐官方计算器 |
+| 用截图当证据 | 每种模式都有完整账本：流水、回收、回撤、连败、分位数 |
 | 只能手动点 | 阶梯资金 + 会话纪律 + 分片冷却 + 止损/止盈，全程自动，可无人值守 |
 
 ## 快速开始
@@ -35,7 +41,7 @@
 
 1. 在 [Releases](../../releases) 里下载 `KenoBOT.exe`。
 2. 双击运行，程序在本机 `127.0.0.1` 起一个页面并自动打开浏览器。
-3. 两个台：`/` 训练台（纯模拟）、`/live` 实盘台（连接账号并勾选「允许真钱」之后才会动真钱）。
+3. 两个台：`/` 训练台（纯模拟）、`/live` 实盘台（连接账号并显式打开开关之后才会动真钱）。
 
 第一次运行会在 `%LOCALAPPDATA%\KenoBOT` 建目录存放状态、日志与报表；不写注册表、不装服务，删掉目录就等于清空。
 
@@ -82,7 +88,7 @@ python -m keno.cli live run --cdp http://127.0.0.1:9222 --live-bets --risk low -
 
 ![Keno BOT 实盘台](docs/images/live.png)
 
-## 可验证公平性（这个仓库最值钱的部分）
+## 可验证公平性（逐字节本地复算）
 
 每一局都能从三个公开量重算：`server_seed`（平台先给哈希、后揭晓）、`client_seed`（你可以改）、`nonce`（局号）。Keno BOT 把这条链做到字节级：
 
@@ -93,41 +99,31 @@ python -m keno.cli verify-rounds \
   --seeds-file  data/samples/seeds_sample.json
 ```
 
-输出是逐局 PASS/FAIL 与命中率对照，期望看到 `240/240 rounds PASS`。改一位种子就立刻 FAIL——这就说明它真的在校验，而不是走过场。实盘采集的对局用同一条命令复算，结果与官方计算器逐字节一致。
+输出是逐局 PASS/FAIL 与命中率对照，期望看到 `240/240 rounds PASS`。改一位种子就立刻 FAIL——这就说明它真的在校验，而不是走过场。
 
-## 实测结果（把这几个数字看完再决定要不要用）
+## 赔率表审计
 
-### 真钱账本（自动下注，2026-09-12 → 2026-09-18）
+`data/reference/stake_keno_payouts_official.json` 收录官方 40 档赔率，审计脚本按组合数学逐档重算：
 
-| 指标 | 数值 |
+| 档位 | 实测 RTP |
 | --- | --- |
-| 局数 | 9,331 |
-| 投入 | 121.2212 U |
-| 回收 | 112.3248 U |
-| 净 | **−8.8964 U** |
-| 实测 RTP | 92.66%（理论 98.76%） |
-| 单局「收回 ≥ 投下」比例 | 70.24% |
-| 最大单次回撤 | 10.73 U |
-| 最长连败 | 13 局 |
+| low，10 选 | 98.76% |
+| 全部 40 个组合 | 98.65% – 99.07% |
 
-把同样 9,331 局、同样的注额阶梯丢进 20,000 次蒙特卡洛（公平超几何 + 官方赔率），期望是 −1.58 U、标准差 7.78 U；实测 −8.90 U 落在 **9.8 ~ 14 分位**。也就是说：**账面难看属于正常方差范围，没有证据表明盘口被动了手脚。** 唯一的硬结论是流水放大——同样局数平注最小注只要 0.93 U 流水，这套阶梯跑出了 **133.9 倍**。
+自建表 `configs/payout.yaml` 与官方表在 5/6/7/8/9 中档上存在差异，完整清单见 `reports/payout_audit.md`。你也可以自己重算：
 
-命中分布同样对得上：low/10 子集 7,029 局的卡方值 5.58（df = 6，p ≈ 0.47）。
+```bash
+python -m keno.cli audit-payouts --paytable configs/payout.yaml --official data/reference/stake_keno_payouts_official.json
+```
 
-### 纸面回测（零模型，不是「策略有效」的证据）
+## 这个工具测什么
 
-| 实验 | 结果 |
-| --- | --- |
-| 1,000 会话 × 176 局（阶梯资金） | 盈利会话 38.2%，中位 −0.416 U |
-| 同上，平注对照臂 | 盈利会话 37.5%（更差） |
-| 30 天 × 24h 无人值守 | 盈利天数 6.7%，单日中位 −9.56 U，30 天里 25 天爆仓 |
-| 社区常见打法（low/9、low/10、classic/10 等） | ROI 全为负，−0.5% ~ −2.5% |
+* **任意档位的期望值**：`赔付 × P(命中) − 注额`，由超几何分布直接算出，不需要模拟。
+* **一套资金策略的方差与回撤**：公平开奖下蒙特卡洛，固定随机种子，结果可复现。
+* **连败与命中分布**：与理论值对照（对命中直方图做卡方检验）。
+* **参数冻结验证**：在一段数据上调好的参数，换到没见过的种子材料上重放，确认它不是记住了噪音。
 
-**Keno 每次下注的期望都是负的。任何资金管理只能改变结果分布的形状（回撤、爆仓速度、波动），不能把负期望改成正期望。** 这个仓库的价值在于把这句话量化，而不是绕过它。
-
-### 赔率表审计
-
-`data/reference/stake_keno_payouts_official.json` 收录官方 40 档赔率，审计脚本逐档重算：**98.65% ~ 99.07%**（low 10 选 = 98.76%）。自建表 `configs/payout.yaml` 与官方表在 5/6/7/8/9 中档上存在差异，差异清单见 `reports/payout_audit.md`。
+有两个结论来自游戏本身，而不是来自这个软件：Keno 每一档的返还都低于投入；资金管理只能改变结果分布的**形状**（回撤、爆仓速度、波动），改不了符号。这个仓库的价值在于把这件事量化，而不是把它说成故事。
 
 ## 目录结构
 
@@ -150,15 +146,9 @@ tests/                    pytest（110 项）
 
 状态写在哪里：exe 版写 `%LOCALAPPDATA%\KenoBOT`，源码版写 `data/webapp/`，可用 `KENO_BOT_HOME` 覆盖。
 
-## 与其它开源 Keno 项目的关系
-
-* **evilbot**（`poky1084/evilbot`）：浏览器里跑的 JS/Lua 策略框架，生态最活跃，适合学「脚本怎么挂进页面」；Keno 只是它支持的十几个游戏之一，没有本地 RNG 复算与赔率审计。
-* **stake-bet-analyzer** 一类扩展：做热号与模式统计，不自动下注，也不验证结果来源。
-* **本仓库**：默认只读、可验证、可回放；自带真钱执行器，但真钱路径必须显式打开。
-
 ## 路线图（Roadmap，欢迎 PR）
 
-* **脚本式策略插件**：给外部策略一个稳定的钩子（每局拿到历史与余额、返回 picks 与金额），让人不用改核心就能贡献选号逻辑——这是 **evilbot** 最值得学的一点（它的 `dobet()` 接口）。
+* **脚本式策略插件**：给外部策略一个稳定的钩子（每局拿到历史与余额、返回 picks 与金额），让人不用改核心就能贡献选号逻辑。
 * **BET_LIST 对账**：下注失败/超时后用平台的注单列表反查补账，替掉现在「uuid identifier + 只看 nonce/余额」的做法。
 * **英文界面**：静态页面文案目前以中文为主，i18n 化后对海外贡献者更友好。
 * **数据校验**：给 `data/**/*.jsonl` 加 JSON Schema 与 `collect` 侧的字段断言，坏行直接拒绝。
@@ -169,12 +159,8 @@ tests/                    pytest（110 项）
 
 ## 免责声明
 
-Keno 是负期望的赌博游戏。作者实测结果是**亏损**（见上）。这个仓库是研究与工程实践项目，不构成投资建议、不承诺任何收益。请只使用你输得起的钱，并遵守你所在地区的法律与平台条款。
+Keno 是负期望的游戏。这个仓库是研究与工程实践项目：它做测量、不做预测，也不承诺任何结果。请只使用你输得起的钱，并遵守你所在地区的法律与平台条款。
 
 ## 许可
 
 **GNU General Public License v2.0**，见 [`LICENSE`](LICENSE)。Copyright (C) 2026 GeniusHu-tgty。按许可证原文，本软件不提供任何担保。你可以使用、研究、分享、修改，包括商用；如果你分发修改后的版本，它必须仍然保持 GPL 并附带源码。
-
----
-
-[English README →](README.md)

@@ -1,16 +1,22 @@
 # Keno BOT
 
+[![lang](https://img.shields.io/badge/English-brightgreen.svg)](#)
+[![lang](https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red.svg)](README.zh-CN.md)
+[![lang](https://img.shields.io/badge/%E6%97%A5%E6%9C%AC%E8%AA%9E-green.svg)](README.ja.md)
+[![lang](https://img.shields.io/badge/Espa%C3%B1ol-orange.svg)](README.es.md)
+[![lang](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-purple.svg)](README.ru.md)
+[![lang](https://img.shields.io/badge/%ED%95%9C%EA%B5%AD%EC%96%B4-yellow.svg)](README.ko.md)
+
 [![License: GPL v2](https://img.shields.io/badge/license-GPLv2-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#quickstart)
 [![Tests](https://img.shields.io/badge/tests-110%20passing-brightgreen.svg)](CONTRIBUTING.md)
-[![中文文档](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%20README-red.svg)](README.zh-CN.md)
 
 **Keno BOT** is a local, replayable **Keno** workbench and betting bot.
 
 * It re-derives every draw from the published provably-fair chain (`server_seed` / `client_seed` / `nonce`, HMAC-SHA256) — byte for byte, with a verifier you can run in one command.
-* It audits the platform's 40-tier payout table instead of trusting it (measured RTP 98.65% – 99.07%).
-* It back-tests staking policies against a **null model** (fair hypergeometric draws), so you see the *shape* of the outcome distribution instead of a sales pitch.
+* It audits the platform's 40-tier payout table instead of trusting it (every tier recomputed, 98.65% – 99.07%).
+* It measures staking policies against a **null model** (fair hypergeometric draws), so you see the shape of the outcome distribution instead of a sales pitch.
 * It can drive **your own** account through **your own Chrome** over CDP — paper mode is the default, live betting sits behind an explicit flag.
 
 Keno only. No prediction models, no AI number picking, no profit promises.
@@ -24,9 +30,9 @@ Keno only. No prediction models, no AI number picking, no profit promises.
 | The usual script | Keno BOT |
 | --- | --- |
 | A hammer: hot numbers, cold numbers, martingale | A ruler first: per-bet RTP, variance and expected value are computed locally |
-| Screenshots of the wins | A full real-money ledger: turnover, returns, drawdown, losing streaks and percentiles — losses included |
 | Payout odds from hearsay | All 40 official tiers recomputed, differences against the built-in table listed one by one |
 | The RNG is taken on faith | The HMAC-SHA256 chain is replayed locally and matches the official calculator byte for byte |
+| A screenshot as evidence | A full ledger for every mode: turnover, returns, drawdown, losing streaks, percentiles |
 | Manual clicking | Staking ladder + session discipline + slice cooldown + stop-loss / take-profit, unattended if you want |
 
 ## Quickstart
@@ -35,7 +41,7 @@ Keno only. No prediction models, no AI number picking, no profit promises.
 
 1. Download `KenoBOT.exe` from [Releases](../../releases).
 2. Double-click it. It serves a page on `127.0.0.1` and opens your browser.
-3. Two workbenches: `/` = the simulator (paper only) and `/live` = the live desk (it only touches real money after you connect an account and tick *allow real money*).
+3. Two workbenches: `/` = the simulator (paper only) and `/live` = the live desk (real money needs your account plus the explicit toggle).
 
 The first run creates `%LOCALAPPDATA%\KenoBOT` for state, logs and reports. No registry writes, no service, no installer — delete the folder to wipe it.
 
@@ -93,41 +99,31 @@ python -m keno.cli verify-rounds \
   --seeds-file  data/samples/seeds_sample.json
 ```
 
-Expect `240/240 rounds PASS` plus a hit-rate comparison. Flip one bit in a seed and it fails immediately — that is how you know the check is real. Captured live rounds replayed the same way and matched the official calculator byte for byte.
+Expect `240/240 rounds PASS` plus a hit-rate comparison. Flip one bit in a seed and it fails immediately — that is how you know the check is real. Rounds captured from a live session replay the same way and match the official calculator byte for byte.
 
-## Results so far (read these before deciding anything)
+## Payout-table audit
 
-### Real-money ledger (automated betting, 2026-09-12 → 2026-09-18)
+`data/reference/stake_keno_payouts_official.json` holds the 40 official tiers; the audit script recomputes each one from the game's combinatorics:
 
-| Metric | Value |
+| Tier family | Measured RTP |
 | --- | --- |
-| Rounds | 9,331 |
-| Wagered | 121.2212 U |
-| Returned | 112.3248 U |
-| Net | **−8.8964 U** |
-| Realized RTP | 92.66% (theoretical: 98.76%) |
-| Rounds returning at least the stake | 70.24% |
-| Worst drawdown | 10.73 U |
-| Longest losing streak | 13 rounds |
+| low, 10 picks | 98.76% |
+| every tier, 40 combinations | 98.65% – 99.07% |
 
-Feeding the same 9,331 rounds and the same stake ladder into 20,000 Monte-Carlo runs (fair hypergeometric draws, official payouts) gives an expectation of −1.58 U with σ = 7.78 U. The observed −8.90 U sits at the **9.8th–14th percentile**: ugly, but inside normal variance — there is no evidence the game was tampered with. The one hard finding is turnover: at a flat minimum stake those rounds would have moved 0.93 U, while the ladder moved **133.9×** that.
+The built-in table in `configs/payout.yaml` differs from the official one on the 5/6/7/8/9-hit tiers; the full list is in `reports/payout_audit.md`. Recompute it yourself:
 
-The hit distribution agrees as well: the low/10 subset (7,029 rounds) has χ² = 5.58 with df = 6, p ≈ 0.47.
+```bash
+python -m keno.cli audit-payouts --paytable configs/payout.yaml --official data/reference/stake_keno_payouts_official.json
+```
 
-### Paper back-tests (null model — this is not evidence that a strategy works)
+## What the tool measures
 
-| Experiment | Result |
-| --- | --- |
-| 1,000 sessions × 176 rounds (ladder staking) | 38.2% profitable sessions, median −0.416 U |
-| Same, flat-stake control arm | 37.5% profitable sessions (worse) |
-| 30 days × 24 h unattended | 6.7% profitable days, median day −9.56 U, 25 of 30 days ruined |
-| Popular community strategies (low/9, low/10, classic/10, …) | all negative ROI, −0.5% to −2.5% |
+* **Expected value** of any tier: `payout × P(hits) − stake`, from the hypergeometric distribution — no simulation required.
+* **Variance and drawdown** of a staking policy, by Monte-Carlo over fair draws, with a fixed seed so results are reproducible.
+* **Losing streaks** and hit distributions compared against theory (χ² over the hit histogram).
+* **Parameter-free validation**: a policy tuned on one period is replayed on unseen seed material to check that it does not simply memorise noise.
 
-**Every Keno bet has negative expectation. Money management changes the shape of the outcome distribution (drawdown, ruin speed, variance) — never its sign.** The point of this repo is to make that measurable instead of rhetorical.
-
-### Payout-table audit
-
-`data/reference/stake_keno_payouts_official.json` holds the 40 official tiers; the audit script recomputes each one: **98.65% – 99.07%** (low, 10 picks = 98.76%). The built-in table in `configs/payout.yaml` differs from the official one on the 5/6/7/8/9-hit tiers; the list is in `reports/payout_audit.md`.
+Two facts follow from the game itself, not from this software: Keno pays back less than it takes in on every tier, and money management changes the *shape* of the outcome distribution (drawdown, ruin speed, variance) — never its sign. This repository exists to make that measurable instead of rhetorical.
 
 ## Project layout
 
@@ -141,7 +137,7 @@ src/keno/provably_fair/    HMAC-SHA256 stream, float generator, per-round verifi
 src/keno/game/             draws, hits, payouts, settlement
 src/keno/bot/              the bot: money management, phase machine, combo strategy, ledger, CDP / live execution
 src/keno/research/         Monte-Carlo, parameter-freezing validation, risk grid
-src/keno/reporting/        metrics (hypergeometric, χ², drawdown, streaks) and report export
+src/keno/reporting/        metrics (hypergeometric, chi-square, drawdown, streaks) and report export
 src/keno/webapp/           local workbench (HTTP server + static pages)
 tools/                     sample/icon generation, release packaging
 docs/                      architecture, verification method, quick start (zh)
@@ -150,15 +146,9 @@ tests/                     pytest suite (110 tests)
 
 Where state lives: the exe writes to `%LOCALAPPDATA%\KenoBOT`, a source checkout writes to `data/webapp/`, and `KENO_BOT_HOME` overrides both.
 
-## How it relates to other open-source Keno projects
-
-* **evilbot** (`poky1084/evilbot`) — the most active browser-side strategy framework; great to learn how a script hooks into a page. Keno is one of a dozen games it supports, and it does not verify the RNG or audit payouts.
-* **stake-bet-analyzer** and similar extensions — hot/cold and pattern statistics, no automated betting, no result verification.
-* **This repo** — read-only by default, verifiable, replayable; it does ship a real-money executor, but live betting must be switched on explicitly.
-
 ## Roadmap (PRs welcome)
 
-* **Script-style strategy plugins** — a stable per-round hook (history + bankroll in, picks + stake out) so selection logic can be contributed without touching the core. It is the one lesson worth taking from **evilbot** (its `dobet()` interface).
+* **Script-style strategy plugins** — a stable per-round hook (history + bankroll in, picks + stake out) so selection logic can be contributed without touching the core.
 * **Bet-list reconciliation** — after a failed or timed-out bet, look the wager up in the platform's own bet list instead of trusting nonce/balance deltas.
 * **English UI** — the static pages are still mostly Chinese; i18n them.
 * **Data contracts** — JSON Schema for `data/**/*.jsonl` plus field assertions in `collect`, so malformed rows are rejected at the source.
@@ -169,12 +159,8 @@ See `CONTRIBUTING.md` for good first issues with reproduction steps and acceptan
 
 ## Disclaimer
 
-Keno is a negative-expectation gambling game. The author's own measured result is a **loss** (see above). This is a research and engineering project, not investment advice, and it promises nothing. Only play with money you can afford to lose, and follow the law and the platform terms that apply to you.
+Keno is a game with negative expectation. This is a research and engineering project: it measures, it does not predict, and it promises nothing. Only play with money you can afford to lose, and follow the law and the platform terms that apply to you.
 
 ## License
 
 **GNU General Public License v2.0** — see [`LICENSE`](LICENSE). Copyright (C) 2026 GeniusHu-tgty. There is no warranty, as stated in the license. You may use, study, share and modify this software, including commercially; if you distribute a modified version it must stay under the GPL and ship its source.
-
----
-
-[中文说明 / Chinese README →](README.zh-CN.md)
