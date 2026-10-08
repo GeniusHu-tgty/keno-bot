@@ -8,6 +8,7 @@ directory (see keno.paths), so the packaged .exe never writes next to itself.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 import urllib.request
@@ -39,12 +40,28 @@ def _probe(port: int) -> str | None:
     return None
 
 
+def _open_browser(url: str) -> None:
+    """Open the workbench unless KENO_NO_BROWSER=1.
+
+    Handy when this process runs elevated: webbrowser.open() would start the
+    browser elevated too, and an already running browser then pops a
+    "restart with normal privileges?" dialog.
+    """
+    if os.environ.get("KENO_NO_BROWSER") == "1":
+        print(f"KENO_NO_BROWSER=1，请手动打开：{url}")
+        return
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+
+
 def main() -> int:
     for port in CANDIDATES:
         running = _probe(port)
         if running:
             print(f"Keno BOT 已经在运行，直接打开：{running}")
-            webbrowser.open(running)
+            _open_browser(running)
             return 0
 
     server = bind_http_server("127.0.0.1", CANDIDATES[0])
@@ -57,7 +74,7 @@ def main() -> int:
     print(f"  实盘台   : {live_url}")
     print(f"  数据目录 : {paths.app_home()}")
     print("按 Ctrl+C 停止；关掉这个窗口也会一起停掉。")
-    threading.Timer(0.8, lambda: webbrowser.open(live_url)).start()
+    threading.Timer(0.8, lambda: _open_browser(live_url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
