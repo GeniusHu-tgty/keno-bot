@@ -21,9 +21,9 @@
 
 Keno만 다룹니다. 예측도, AI 번호 선택도, 수익 약속도 없습니다.
 
-[![▶ Keno BOT 데모 영상 — 클릭해서 재생](docs/images/demo-poster.png)](docs/media/keno-bot-demo.mp4)
+https://github.com/user-attachments/assets/ee8b89d7-a21f-47ef-ac36-9fbfe05c36ed
 
-*▶ 커버를 클릭하면 89초 데모가 재생됩니다 (mp4, 25 MB).*
+*▶ 위 플레이어에서 89초 데모를 재생할 수 있습니다. 플레이어가 안 보이면 [영상 열기](https://github.com/user-attachments/assets/ee8b89d7-a21f-47ef-ac36-9fbfe05c36ed).*
 
 ---
 

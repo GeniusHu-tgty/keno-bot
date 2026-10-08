@@ -21,9 +21,9 @@
 
 Только Keno. Никаких предсказаний, никакого ИИ-подбора чисел и никаких обещаний дохода.
 
-[![▶ Демонстрационное видео Keno BOT — нажмите, чтобы включить](docs/images/demo-poster.png)](docs/media/keno-bot-demo.mp4)
+https://github.com/user-attachments/assets/ee8b89d7-a21f-47ef-ac36-9fbfe05c36ed
 
-*▶ Нажмите на обложку, чтобы включить 89-секундную демонстрацию (mp4, 25 МБ).*
+*▶ Демонстрация на 89 секунд — в плеере выше. Плеер не появился? [Откройте видео](https://github.com/user-attachments/assets/ee8b89d7-a21f-47ef-ac36-9fbfe05c36ed).*
 
 ---
 

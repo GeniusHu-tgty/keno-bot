@@ -21,9 +21,9 @@
 
 Keno only. No prediction models, no AI number picking, no profit promises.
 
-[![▶ Keno BOT demo — click to play](docs/images/demo-poster.png)](docs/media/keno-bot-demo.mp4)
+https://github.com/user-attachments/assets/ee8b89d7-a21f-47ef-ac36-9fbfe05c36ed
 
-*▶ Click the poster to play the 89-second demo (mp4, 25 MB).*
+*▶ Click the player above for the 89-second demo (mp4). If no player shows up: [open the video](https://github.com/user-attachments/assets/ee8b89d7-a21f-47ef-ac36-9fbfe05c36ed).*
 
 ---
 

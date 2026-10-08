@@ -21,9 +21,9 @@
 
 只做 Keno。不做预测、不接 AI 选号、不承诺任何收益。
 
-[![▶ Keno BOT 演示视频 — 点击播放](docs/images/demo-poster.png)](docs/media/keno-bot-demo.mp4)
+https://github.com/user-attachments/assets/ee8b89d7-a21f-47ef-ac36-9fbfe05c36ed
 
-*▶ 点封面播放 89 秒演示视频（mp4，25 MB）。*
+*▶ 点上面的播放器即可看 89 秒实机演示。没出现播放器？[点这里打开视频](https://github.com/user-attachments/assets/ee8b89d7-a21f-47ef-ac36-9fbfe05c36ed)。*
 
 ---
 
