@@ -307,7 +307,7 @@ async def _wait_for_login(cdp: str, page: dict, wait_login: float) -> dict:
         nudges = 0
         logged_in_state = False
         while time.time() < deadline:
-            window = max(5.0, min(12.0, deadline - time.time()))
+            window = max(5.0, min(8.0, deadline - time.time()))
             # The reload has to be issued from inside the watching connection, otherwise it
             # can fire the page's request before Network.enable is back on and we lose it.
             nudge = bool(logged_in_state and nudges < MAX_LOGIN_NUDGES)
