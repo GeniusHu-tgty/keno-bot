@@ -4,5 +4,6 @@
 *.cmd text eol=crlf
 *.png binary
 *.ico binary
+*.mp4 binary
 *.zip binary
 *.exe binary

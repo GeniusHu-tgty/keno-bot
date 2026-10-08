@@ -21,7 +21,9 @@
 
 Solo Keno. No predice, no elige números con IA y no promete ningún beneficio.
 
-![Banco de pruebas de Keno BOT](docs/images/lab.png)
+[![▶ Vídeo de demostración de Keno BOT — clic para reproducir](docs/images/demo-poster.png)](docs/media/keno-bot-demo.mp4)
+
+*▶ Pulsa la portada para reproducir la demo de 89 segundos (mp4, 25 MB).*
 
 ---
 

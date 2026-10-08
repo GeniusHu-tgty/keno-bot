@@ -21,7 +21,9 @@
 
 Keno만 다룹니다. 예측도, AI 번호 선택도, 수익 약속도 없습니다.
 
-![Keno BOT 자동 벤치](docs/images/lab.png)
+[![▶ Keno BOT 데모 영상 — 클릭해서 재생](docs/images/demo-poster.png)](docs/media/keno-bot-demo.mp4)
+
+*▶ 커버를 클릭하면 89초 데모가 재생됩니다 (mp4, 25 MB).*
 
 ---
 
