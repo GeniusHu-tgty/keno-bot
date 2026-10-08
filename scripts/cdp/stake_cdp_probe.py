@@ -72,7 +72,7 @@ async def main() -> int:
                 continue
             if msg.get("method") == "Network.requestWillBeSent":
                 req = msg["params"]["request"]
-                if "/_api/graphql" in req.get("url", ""):
+                if "graphql" in req.get("url", "").lower():
                     h = req.get("headers", {}) or {}
                     tok = h.get("x-access-token") or h.get("X-Access-Token")
                     if tok:

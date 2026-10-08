@@ -93,3 +93,22 @@ def test_stake_session_uses_the_shared_sniffer():
     """The connect path must watch all tabs, not just the one it opened."""
     assert stake_session.sniff_any_stake_tab is stake_cdp.sniff_any_stake_tab
     assert stake_session.MAX_LOGIN_NUDGES >= 1
+
+def test_sniff_accepts_the_versioned_graphql_path():
+    """Stake moved the SPA API to /_api/v1/graphql; a literal path match missed it.
+
+    This is the bug behind "logged in, but the bot never connects": the token-bearing
+    request arrived as https://stake.com/_api/v1/graphql and the sniffer dropped it.
+    """
+    ws = _FakeWs([_request("https://stake.com/_api/v1/graphql", {"x-access-token": "tok"})])
+    client = _FakeCdp(ws)
+    headers = asyncio.run(sniff_auth_headers(client, timeout=2.0))
+    assert headers["x-access-token"] == "tok"
+
+
+def test_is_graphql_url_covers_every_known_endpoint():
+    assert stake_cdp.is_graphql_url("https://stake.com/_api/graphql")
+    assert stake_cdp.is_graphql_url("https://stake.com/_api/v1/graphql")
+    assert stake_cdp.is_graphql_url("https://stake.com/_api/v2/graphql?x=1")
+    assert not stake_cdp.is_graphql_url("https://stake.com/_app/immutable/app.js")
+    assert not stake_cdp.is_graphql_url("")

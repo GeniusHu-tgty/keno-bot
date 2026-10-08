@@ -208,11 +208,11 @@ async def _apply_user_snapshot_for_page(cdp: str, headers: dict, page: dict) -> 
 async def _connect_async(cdp: str, wait_login: float) -> dict:
     global _AUTH_HEADERS
     if not cdp_up(cdp):
-        _set_status(status="opening", error="正在启动猎手 Chrome（9222）…", need_login=False)
+        _set_status(status="opening", error="正在启动 CDP Chrome（9222）…", need_login=False)
         if not ensure_cdp(cdp):
             return _set_status(
                 status="error",
-                error="CDP Chrome 未启动。已尝试运行 start-hunter-chrome.ps1，9222 仍无响应。",
+                error="CDP Chrome 未启动。已尝试自动拉起 Chrome，9222 仍无响应。",
                 need_login=False,
             )
     _set_status(

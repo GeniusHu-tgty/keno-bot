@@ -33,6 +33,14 @@ from .data.schema import RoundRecord, jsonable
 
 DEFAULT_CDP = "http://127.0.0.1:9222"
 _GQL_PATH = "/_api/graphql"
+
+
+def is_graphql_url(url: str) -> bool:
+    """True for any Stake GraphQL endpoint (/_api/graphql or /_api/v1/graphql)."""
+    u = (url or "").lower()
+    if "graphql" not in u:
+        return False
+    return "/_api/" in u or "/graphql" in u
 _KEEP_HEADERS = ("x-access-token", "x-lockdown-token", "x-language", "x-user-agent")
 
 QUERIES = {
@@ -121,7 +129,7 @@ async def _sniff_auth_headers(client: _Cdp, timeout: float = 45.0) -> dict:
         if msg.get("method") != "Network.requestWillBeSent":
             continue
         req = msg["params"]["request"]
-        if _GQL_PATH not in req.get("url", ""):
+        if not is_graphql_url(req.get("url", "")):
             continue
         headers = req.get("headers") or {}
         if headers.get("x-access-token") or headers.get("X-Access-Token"):

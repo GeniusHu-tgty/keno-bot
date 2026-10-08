@@ -17,8 +17,10 @@ from decimal import Decimal
 from pathlib import Path
 
 DEFAULT_CDP = "http://127.0.0.1:9222"
-HUNTER_PROFILE = Path(r"C:\Users\Administrator\.hunter\chrome-profile")
-HUNTER_CHROME_PS1 = Path(r"C:\Users\Administrator\.hunter\bin\start-hunter-chrome.ps1")
+# Where the CDP Chrome keeps its own profile. Override with KENO_CHROME_PROFILE.
+DEFAULT_CHROME_PROFILE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "KenoBOT" / "chrome-profile"
+# Optional launcher script used instead of starting Chrome directly (KENO_CHROME_PS1).
+CHROME_LAUNCHER_PS1 = Path(os.environ["KENO_CHROME_PS1"]) if os.environ.get("KENO_CHROME_PS1") else None
 _CHROME_CANDIDATES = (
     Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),
     Path(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"),
@@ -27,6 +29,20 @@ _CHROME_CANDIDATES = (
 )
 KENO_URL = "https://stake.com/casino/games/keno"
 _GQL_PATH = "/_api/graphql"
+"""Path used for our own in-page fetches (both this and /_api/v1/graphql answer)."""
+
+
+def is_graphql_url(url: str) -> bool:
+    """True for any Stake GraphQL endpoint.
+
+    Stake serves the same API under /_api/graphql and /_api/v1/graphql, and the
+    SPA switched to the versioned path. Matching one literal path made the
+    sniffer ignore every authenticated request the page sent.
+    """
+    u = (url or "").lower()
+    if "graphql" not in u:
+        return False
+    return "/_api/" in u or "/graphql" in u
 _KEEP_HEADERS = (
     "x-access-token",
     "x-lockdown-token",
@@ -53,6 +69,12 @@ def cdp_up(cdp: str = DEFAULT_CDP) -> bool:
         return False
 
 
+def chrome_profile_dir() -> Path:
+    """Profile directory for the CDP Chrome (KENO_CHROME_PROFILE wins)."""
+    env = os.environ.get("KENO_CHROME_PROFILE")
+    return Path(env) if env else DEFAULT_CHROME_PROFILE
+
+
 def _chrome_exe() -> Path | None:
     for path in _CHROME_CANDIDATES:
         if path.exists():
@@ -64,10 +86,11 @@ def _wmi_launch_chrome() -> bool:
     browser = _chrome_exe()
     if browser is None:
         return False
-    HUNTER_PROFILE.mkdir(parents=True, exist_ok=True)
+    profile = chrome_profile_dir()
+    profile.mkdir(parents=True, exist_ok=True)
     command = (
         f'"{browser}" --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 '
-        f'--remote-allow-origins=* --user-data-dir="{HUNTER_PROFILE}" '
+        f'--remote-allow-origins=* --user-data-dir="{profile}" '
         "--no-first-run --no-default-browser-check --disable-session-crashed-bubble about:blank"
     )
     script = (
@@ -88,11 +111,11 @@ def _wmi_launch_chrome() -> bool:
 
 
 def ensure_cdp(cdp: str = DEFAULT_CDP) -> bool:
-    """Start hunter Chrome on 9222, outside this process job so it stays up."""
+    """Start a CDP Chrome on 9222, outside this process job so it stays up."""
     if cdp_up(cdp):
         return True
     launched = False
-    if HUNTER_CHROME_PS1.exists():
+    if CHROME_LAUNCHER_PS1 is not None and CHROME_LAUNCHER_PS1.exists():
         try:
             subprocess.run(
                 [
@@ -101,7 +124,7 @@ def ensure_cdp(cdp: str = DEFAULT_CDP) -> bool:
                     "-ExecutionPolicy",
                     "Bypass",
                     "-File",
-                    str(HUNTER_CHROME_PS1),
+                    str(CHROME_LAUNCHER_PS1),
                 ],
                 timeout=40,
                 check=False,
@@ -290,7 +313,7 @@ async def sniff_auth_headers(
         if msg.get("method") != "Network.requestWillBeSent":
             continue
         req = msg["params"].get("request") or {}
-        if _GQL_PATH not in req.get("url", ""):
+        if not is_graphql_url(req.get("url", "")):
             continue
         headers = req.get("headers") or {}
         if headers.get("x-access-token") or headers.get("X-Access-Token"):
