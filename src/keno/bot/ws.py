@@ -8,15 +8,26 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
-import websockets
-from websockets.asyncio.client import connect
-from websockets.asyncio.server import serve
-
 from ..data.schema import RoundRecord, jsonable
 from ..game.paytable import Paytable
 from .bot import KenoBot
 from .live import BotConfig, build_bot, build_summary
 from .datasource import iter_synthetic_rounds
+
+
+def _load_ws():
+    """Import the optional dependency lazily, like the other CDP/ws call sites do.
+
+    websockets lives in the [ws] extra; the base install must stay importable.
+    """
+    try:
+        from websockets.asyncio.client import connect
+        from websockets.asyncio.server import serve
+    except ImportError as exc:
+        raise ImportError(
+            "the ws data source needs the optional dependency: python -m pip install -e '.[ws]'"
+        ) from exc
+    return connect, serve
 
 
 async def _serve_mock_keno(port: int, rounds: int, interval: float, seed: str, client_seed: str) -> None:
@@ -26,6 +37,7 @@ async def _serve_mock_keno(port: int, rounds: int, interval: float, seed: str, c
     practice the connect -> receive -> parse -> classify -> persist loop without
     touching stake.com or any real account.
     """
+    _, serve = _load_ws()
     clients: set = set()
 
     async def handler(ws) -> None:
@@ -52,6 +64,7 @@ async def _serve_mock_keno(port: int, rounds: int, interval: float, seed: str, c
 
 
 async def _run_ws_client(config: BotConfig, bot: KenoBot, log_path: Path) -> None:
+    connect, _ = _load_ws()
     uri = f"ws://127.0.0.1:{config.ws_port}"
     received = 0
     with log_path.open("w", encoding="utf-8") as log_file:
