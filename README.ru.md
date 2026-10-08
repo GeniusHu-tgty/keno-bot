@@ -10,7 +10,7 @@
 [![License: GPL v2](https://img.shields.io/badge/license-GPLv2-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#%D0%B1%D1%8B%D1%81%D1%82%D1%80%D1%8B%D0%B9-%D1%81%D1%82%D0%B0%D1%80%D1%82)
-[![Tests](https://img.shields.io/badge/tests-110%20passing-brightgreen.svg)](CONTRIBUTING.md)
+[![CI](https://github.com/GeniusHu-tgty/keno-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/GeniusHu-tgty/keno-bot/actions/workflows/ci.yml)
 
 **Keno BOT** — локальный исследовательский стенд и бот автоматических ставок **только для Keno**.
 

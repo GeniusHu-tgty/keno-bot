@@ -10,7 +10,7 @@
 [![License: GPL v2](https://img.shields.io/badge/license-GPLv2-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#%EB%B9%A0%EB%A5%B8-%EC%8B%9C%EC%9E%91)
-[![Tests](https://img.shields.io/badge/tests-110%20passing-brightgreen.svg)](CONTRIBUTING.md)
+[![CI](https://github.com/GeniusHu-tgty/keno-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/GeniusHu-tgty/keno-bot/actions/workflows/ci.yml)
 
 **Keno BOT** 은 **Keno 전용** 로컬 연구 벤치이자 자동 베팅 봇입니다.
 
