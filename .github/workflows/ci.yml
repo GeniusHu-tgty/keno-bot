@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }} / py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: install
+        run: python -m pip install --upgrade pip && python -m pip install -e . pytest
+      - name: tests
+        run: python -m pytest -q
+      - name: cli smoke (null-model simulation)
+        run: python -m keno.cli simulate --rounds 500 --pick-count 10 --out reports/ci
+      - name: cli smoke (verify the bundled sample)
+        run: python -m keno.cli verify-rounds --replay-file data/samples/rounds_sample.jsonl --seeds-file data/samples/seeds_sample.json
