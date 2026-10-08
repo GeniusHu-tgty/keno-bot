@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Connect if needed, then place a bounded 0.0001 live probe batch."""
 
 from __future__ import annotations

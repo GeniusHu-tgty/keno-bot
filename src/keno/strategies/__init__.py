@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from .base import Strategy
 from .random import RandomStrategy
 from .hot import HotStrategy

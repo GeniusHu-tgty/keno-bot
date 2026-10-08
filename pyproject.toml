@@ -1,13 +1,33 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "keno-bot"
 version = "0.1.0"
-description = "Local, replayable Stake-style Keno research engine"
+description = "Local, replayable Stake-style Keno research engine: provably-fair verifier, payout-table audit, Monte-Carlo bench and a paper-by-default betting bot"
+readme = "README.md"
+license = "GPL-2.0-only"
+license-files = ["LICENSE"]
+authors = [{ name = "GeniusHu-tgty" }]
 requires-python = ">=3.11"
 dependencies = ["PyYAML>=6.0"]
+keywords = ["keno", "provably-fair", "hmac-sha256", "monte-carlo", "simulation", "research"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.urls]
+Homepage = "https://github.com/GeniusHu-tgty/keno-bot"
+Repository = "https://github.com/GeniusHu-tgty/keno-bot"
+Issues = "https://github.com/GeniusHu-tgty/keno-bot/issues"
 
 [project.optional-dependencies]
 ws = ["websockets>=12"]

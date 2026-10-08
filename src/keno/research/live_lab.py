@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from __future__ import annotations
 
 """Turn paid live draws into extra learning without extra stake.

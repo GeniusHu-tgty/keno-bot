@@ -78,6 +78,19 @@ Python 3.11+. Runtime dependency: PyYAML (**paper mode works with the standard l
 
 See `docs/ARCHITECTURE.md` (module map and data flow) and `docs/VERIFICATION.md` (how to re-derive draws and audit the paytable).
 
+## 6. Licensing of contributions
+
+Keno BOT is released under the **GNU General Public License v2.0** (see `LICENSE`). By submitting a pull request you agree that your contribution is licensed under the same terms. Copyright (C) 2026 GeniusHu-tgty and contributors.
+
+Keep the two-line header at the top of every Python file:
+
+```python
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
+```
+
+Do not add code you cannot license this way — no copied code from GPL-incompatible sources, no vendored binaries, no scraped data dumps.
+
 ## 中文摘要
 
 这个仓库欢迎三类贡献，按优先级：① 让**测量**更可信（校验、审计、复现脚本）；② 修 bug；③ 界面与文档。

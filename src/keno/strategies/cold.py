@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from collections import Counter
 from random import Random
 from typing import Sequence

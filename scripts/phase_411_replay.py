@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Replay the reference 411-round screenshot: identities, curve, drawdown, luck vs typical."""
 from __future__ import annotations
 

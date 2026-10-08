@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from .sessions import run_session_monte_carlo
 from .daily import run_daily_simulation
 from .strategy_grid import run_strategy_grid

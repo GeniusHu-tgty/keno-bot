@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 import json
 
 from keno.reporting.history_export import normalize_record, write_history_exports

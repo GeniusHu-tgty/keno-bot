@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from decimal import Decimal
 
 from keno.bot.stake_live import SESSION_ROTATE_REASONS, next_bet_blows_stop, plan_live_run

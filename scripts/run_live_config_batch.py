@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Run a small live probe batch with an explicit risk/pick config."""
 
 from __future__ import annotations

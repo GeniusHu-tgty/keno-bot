@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Read-only: pull kenoBet GraphQL snippets from the open Stake tab."""
 from __future__ import annotations
 

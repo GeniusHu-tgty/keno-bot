@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Validate: CDP header sniff -> in-page GraphQL replay for stake.com.
 
 1. Connect to the stake.com page target over CDP (WSL -> Windows Chrome).

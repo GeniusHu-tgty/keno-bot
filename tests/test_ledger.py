@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from keno.bot.ledger import append_record, loss_p_pick10, scoped_records, summarize, viability
 
 

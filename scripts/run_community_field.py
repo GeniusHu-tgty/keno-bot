@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Compare public Keno configs on the official paytable. Paper only."""
 
 from keno.research.strategy_grid import run_strategy_grid

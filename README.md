@@ -1,219 +1,180 @@
 # Keno BOT
 
-**Keno BOT** 是一个只针对 Keno 的本地研究台 + 自动投注机器人：把平台的**可验证公平性（provably fair）种子链在本地完整复算**，审计**官方 40 档赔率表**，用**零模型（null model）**回测各种下注策略，并且——在你自己明确打开开关的前提下——**通过本地 Chrome 的 CDP 通道操作真实账户自动下注**。
+[![License: GPL v2](https://img.shields.io/badge/license-GPLv2-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#quickstart)
+[![Tests](https://img.shields.io/badge/tests-110%20passing-brightgreen.svg)](CONTRIBUTING.md)
+[![中文文档](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%20README-red.svg)](README.zh-CN.md)
 
-> Keno BOT is a local Keno workbench and betting bot. It re-derives every draw from the published provably-fair seed chain, audits the payout table, back-tests staking policies against a null model, and can drive a real account through your own Chrome over CDP. **Paper mode is the default; live bets need an explicit flag.**
+**Keno BOT** is a local, replayable **Keno** workbench and betting bot.
 
-只做 Keno。不做预测、不接 AI 选号、不承诺盈利。
+* It re-derives every draw from the published provably-fair chain (`server_seed` / `client_seed` / `nonce`, HMAC-SHA256) — byte for byte, with a verifier you can run in one command.
+* It audits the platform's 40-tier payout table instead of trusting it (measured RTP 98.65% – 99.07%).
+* It back-tests staking policies against a **null model** (fair hypergeometric draws), so you see the *shape* of the outcome distribution instead of a sales pitch.
+* It can drive **your own** account through **your own Chrome** over CDP — paper mode is the default, live betting sits behind an explicit flag.
+
+Keno only. No prediction models, no AI number picking, no profit promises.
+
+![Keno BOT workbench](docs/images/lab.png)
 
 ---
 
-## 1. 它和常见的 Keno 脚本不一样在哪
+## Why not just another Keno script
 
-| 常见脚本 | Keno BOT |
+| The usual script | Keno BOT |
 | --- | --- |
-| 一把锤子：猜热号、追冷号、倍投 | 先给一把尺子：每局理论 RTP、单注方差、期望值能本地算出来 |
-| 只截图晒盈利 | 真钱账本全量落地：流水、回收、回撤、连败、分位数都摆出来（包括亏的那些） |
-| 赔率靠口口相传 | 官方 40 档赔率逐档复核，自建表与官方表的差异列成对照 |
-| RNG 只能「相信平台」 | HMAC-SHA256 种子链本地复算，逐字节对齐官方计算器 |
-| 只能手动点 | 阶梯资金 + 会话纪律 + 分片冷却 + 止损/收绿，全程自动，可无人值守 |
+| A hammer: hot numbers, cold numbers, martingale | A ruler first: per-bet RTP, variance and expected value are computed locally |
+| Screenshots of the wins | A full real-money ledger: turnover, returns, drawdown, losing streaks and percentiles — losses included |
+| Payout odds from hearsay | All 40 official tiers recomputed, differences against the built-in table listed one by one |
+| The RNG is taken on faith | The HMAC-SHA256 chain is replayed locally and matches the official calculator byte for byte |
+| Manual clicking | Staking ladder + session discipline + slice cooldown + stop-loss / take-profit, unattended if you want |
 
-## 2. 快速开始
+## Quickstart
 
-### 路线 A：直接跑 exe（推荐给不装 Python 的人）
+### A. Run the Windows binary (no Python needed)
 
-1. 下载 `KenoBOT.exe`（或自己构建，见路线 C）。
-2. 双击。程序在本机 `127.0.0.1` 上起一个页面并自动打开浏览器。
-3. 页面分两个台：`/` 训练台（纯模拟）、`/live` 实盘台（需要连真实账户才会动真钱）。
+1. Download `KenoBOT.exe` from [Releases](../../releases).
+2. Double-click it. It serves a page on `127.0.0.1` and opens your browser.
+3. Two workbenches: `/` = the simulator (paper only) and `/live` = the live desk (it only touches real money after you connect an account and tick *allow real money*).
 
-第一次运行会在 `%LOCALAPPDATA%\KenoBOT` 建目录存放状态、日志和报表；不写注册表，不装服务，删掉目录就等于清空。
+The first run creates `%LOCALAPPDATA%\KenoBOT` for state, logs and reports. No registry writes, no service, no installer — delete the folder to wipe it.
 
-### 路线 B：源码运行（开发者）
+### B. Run from source (developers)
 
 ```bash
 git clone <your-fork-url> keno-bot && cd keno-bot
 python -m pip install -e .
-python keno_bot_app.py          # 起页面（等价于 python -m keno.cli serve）
+python keno_bot_app.py        # same as: python -m keno.cli serve
 ```
 
-Windows 上也可以直接双击根目录的 `启动.bat`（有 `dist\KenoBOT.exe` 就启 exe，否则用本机 Python 起页面）。
+On Windows you can also double-click `启动.bat`: it launches `dist\KenoBOT.exe` when present, otherwise the local Python app.
 
-### 路线 C：自己打包 exe
+### C. Build your own exe
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File build_exe.ps1            # 单文件 dist\KenoBOT.exe
-powershell -ExecutionPolicy Bypass -File build_exe.ps1 -Onedir   # 目录版，启动更快
+powershell -ExecutionPolicy Bypass -File build_exe.ps1            # single file: dist\KenoBOT.exe
+powershell -ExecutionPolicy Bypass -File build_exe.ps1 -Onedir   # folder build, faster start
+powershell -ExecutionPolicy Bypass -File tools\make_release.ps1  # exe + docs -> dist\KenoBOT-<version>-win64.zip
 ```
 
-脚本会在需要时自动生成图标（`tools/make_icon.py`）、示例数据（`tools/make_sample.py`）并安装 PyInstaller。
+The build script generates the icon (`tools/make_icon.py`) and the self-test sample (`tools/make_sample.py`) when needed, and installs PyInstaller if it is missing.
 
-## 3. 实盘台怎么连（真钱，默认关）
+## Live desk (real money, off by default)
 
-Keno BOT 不保存你的账号密码，也没有自己的登录接口。它只做一件事：连到你**已经登录**的 Chrome 上（Chrome DevTools Protocol），从页面自己的请求里取会话令牌（只存在内存里，从不落盘），然后像人一样点下注按钮。
+Keno BOT never stores your password and ships no login endpoint. It attaches to a Chrome instance **you** are already logged into (Chrome DevTools Protocol), reads the session token out of the page's own requests (in memory only, never written to disk) and then clicks the bet button like a human.
 
 ```bash
-# 1) 先用调试端口启动 Chrome（用你自己的用户目录，不要用陌生脚本的 profile）
+# 1) start Chrome with a debugging port, using a profile you own
 chrome.exe --remote-debugging-port=9222 --user-data-dir=%USERPROFILE%\keno-chrome-profile
 
-# 2) 在这个 Chrome 里手动登录，打开 Keno 页面
+# 2) log in inside that Chrome and open the Keno page
 
-# 3) 只读体检：连上、看状态，不下注
+# 3) read-only check: connect and report state, no bets
 python -m keno.cli live connect --cdp http://127.0.0.1:9222
 
-# 4) 真的要下注时，才加 --live-bets；并且先跑最小注
+# 4) only when you mean it: add --live-bets, and start with the minimum stake
 python -m keno.cli live run --cdp http://127.0.0.1:9222 --live-bets --risk low --pick-count 10 --rounds 20
 ```
 
-`KENO_CHROME_PROFILE` / `KENO_CHROME_PS1` 两个环境变量可以指定 Chrome 用户目录与启动脚本；不设就用 `~/.keno-bot/` 下的默认值。
+`KENO_CHROME_PROFILE` and `KENO_CHROME_PS1` point at your Chrome profile and launcher script; without them a default under `~/.keno-bot/` is used.
 
-纪律（写在代码里，不是写在文档里就算）：单注上限、阶梯档位、二连败降档、四档赢了强制休息、止损/收绿、分片冷却、日上限。先在训练台把参数跑熟再连真钱。
+Discipline lives in the code, not in this document: per-bet cap, ladder levels, two-loss step-down, forced break after a level-4 win, stop-loss / take-profit, slice cooldown and a daily cap. Tune it on the simulator before you connect anything real.
 
-## 4. 可验证公平性（这个仓库最值钱的部分）
+![Keno BOT live desk](docs/images/live.png)
 
-Keno 每一局的结果都能从三个公开量重算：`server_seed`（平台先给哈希、后揭晓）、`client_seed`（你可以改）、`nonce`（局号）。Keno BOT 把这条链写到字节级：
+## Provably fair, verified locally
+
+Every round is reproducible from three public values: `server_seed` (hashed up front, revealed later), `client_seed` (yours) and `nonce` (round index). Keno BOT implements that chain down to the byte:
 
 ```bash
-# 仓库自带的自证样本（240 局，种子只存在于本仓库）
+# self-contained sample shipped with the repo (240 rounds)
 python -m keno.cli verify-rounds \
   --replay-file data/samples/rounds_sample.jsonl \
   --seeds-file  data/samples/seeds_sample.json
 ```
 
-输出为逐局 PASS/FAIL 与总命中率对照；改一位种子就立刻 FAIL，说明它真的在校验而不是走过场。
+Expect `240/240 rounds PASS` plus a hit-rate comparison. Flip one bit in a seed and it fails immediately — that is how you know the check is real. Captured live rounds replayed the same way and matched the official calculator byte for byte.
 
-实盘采集的对局同样一条命令复算（真实采集里 4/4 局 PASS，且开奖串与官方计算器逐字节一致）。
+## Results so far (read these before deciding anything)
 
-## 5. 实测结果（把这几个数字看完再决定要不要用）
+### Real-money ledger (automated betting, 2026-09-12 → 2026-09-18)
 
-### 5.1 真钱账本（自动下注，2026-09-12 → 2026-09-18）
-
-| 指标 | 数值 |
+| Metric | Value |
 | --- | --- |
-| 局数 | 9,331 |
-| 投入 | 121.2212 U |
-| 回收 | 112.3248 U |
-| 净 | **-8.8964 U** |
-| 实测 RTP | 92.66%（理论 98.76%） |
-| 单局「收回 ≥ 投下」比例 | 70.24% |
-| 最大单次回撤 | 10.73 U |
-| 最长连败 | 13 局 |
+| Rounds | 9,331 |
+| Wagered | 121.2212 U |
+| Returned | 112.3248 U |
+| Net | **−8.8964 U** |
+| Realized RTP | 92.66% (theoretical: 98.76%) |
+| Rounds returning at least the stake | 70.24% |
+| Worst drawdown | 10.73 U |
+| Longest losing streak | 13 rounds |
 
-把同样 9,331 局、同样的注额阶梯丢进 20,000 次蒙特卡洛（公平超几何 + 官方赔率），期望是 -1.58 U、标准差 7.78 U；实测 -8.90 U 落在 **9.8 ~ 14.0 分位**。也就是说：**账面难看属于正常方差范围，没有证据表明盘口被动了手脚。** 唯一的硬结论是流水放大——同样的局数平注最小注只要 0.93 U 流水，这套阶梯跑出了 133.9 倍。
+Feeding the same 9,331 rounds and the same stake ladder into 20,000 Monte-Carlo runs (fair hypergeometric draws, official payouts) gives an expectation of −1.58 U with σ = 7.78 U. The observed −8.90 U sits at the **9.8th–14th percentile**: ugly, but inside normal variance — there is no evidence the game was tampered with. The one hard finding is turnover: at a flat minimum stake those rounds would have moved 0.93 U, while the ladder moved **133.9×** that.
 
-命中分布同样对得上：low/10 子集 7,029 局的卡方值 5.58（df 6，p≈0.47）。
+The hit distribution agrees as well: the low/10 subset (7,029 rounds) has χ² = 5.58 with df = 6, p ≈ 0.47.
 
-### 5.2 纸面回测（零模型，不是「策略有效」的证据）
+### Paper back-tests (null model — this is not evidence that a strategy works)
 
-| 实验 | 结果 |
+| Experiment | Result |
 | --- | --- |
-| 1,000 会话 × 176 局（阶梯资金） | 盈利会话 38.2%，中位 -0.416 U |
-| 同上，平注对照臂 | 盈利会话 37.5%（更差） |
-| 30 天 × 24h 无人值守 | 盈利天数 6.7%，单日中位 -9.56 U，30 天里 25 天爆仓 |
-| 社区常见打法（low/9、low/10、classic/10 等） | ROI 全为负，-0.5% ~ -2.5% |
+| 1,000 sessions × 176 rounds (ladder staking) | 38.2% profitable sessions, median −0.416 U |
+| Same, flat-stake control arm | 37.5% profitable sessions (worse) |
+| 30 days × 24 h unattended | 6.7% profitable days, median day −9.56 U, 25 of 30 days ruined |
+| Popular community strategies (low/9, low/10, classic/10, …) | all negative ROI, −0.5% to −2.5% |
 
-结论写在这里：**Keno 的每次下注期望为负，任何资金管理只能改变结果的分布形状（回撤、爆仓速度、波动），不能把负期望改成正期望。** 这个仓库的价值在于把这句话量化，而不是绕过它。
+**Every Keno bet has negative expectation. Money management changes the shape of the outcome distribution (drawdown, ruin speed, variance) — never its sign.** The point of this repo is to make that measurable instead of rhetorical.
 
-### 5.3 赔率表审计
+### Payout-table audit
 
-`data/reference/stake_keno_payouts_official.json` 收录官方 40 档赔率，脚本逐档算 RTP：**98.65% ~ 99.07%**（low 10 选 = 98.76%）。自建表（`configs/payout.yaml`，来源是方案截图里的档位比例）与官方表在 5/6/7/8/9 中档上存在差异，差异清单见 `reports/payout_audit.md`。
+`data/reference/stake_keno_payouts_official.json` holds the 40 official tiers; the audit script recomputes each one: **98.65% – 99.07%** (low, 10 picks = 98.76%). The built-in table in `configs/payout.yaml` differs from the official one on the 5/6/7/8/9-hit tiers; the list is in `reports/payout_audit.md`.
 
-## 6. 目录结构
+## Project layout
 
 ```text
-keno_bot_app.py           启动器 / PyInstaller 入口
-build_exe.ps1             打包 exe
-configs/                  game.yaml（棋盘、RNG 协议） payout.yaml（自建赔率） bot_phase.yaml（阶梯参数）
-data/reference/           官方赔率表
-data/samples/             自证样本（仓库自己生成的种子与开奖）
-src/keno/provably_fair/   HMAC-SHA256 与浮点生成、逐局校验
-src/keno/game/            开奖、命中、赔率、结算
-src/keno/bot/             下注机器人：资金、阶段机、组合策略、账本、CDP/实盘执行
-src/keno/research/        蒙特卡洛、参数冻结验证、风险网格
-src/keno/reporting/       指标（超几何、卡方、回撤、连败）与报告导出
-src/keno/webapp/          本地工作台（HTTP 服务 + 页面）
-tools/                    生成示例数据、生成图标
-docs/                     架构、验证方法与选号逻辑说明
-tests/                    pytest（109+ 项）
+keno_bot_app.py            launcher / PyInstaller entry point
+build_exe.ps1              build the Windows binary
+configs/                   game.yaml (board, RNG protocol), payout.yaml (built-in table), bot_phase.yaml (ladder)
+data/reference/            official payout table
+data/samples/              self-contained verification sample
+src/keno/provably_fair/    HMAC-SHA256 stream, float generator, per-round verifier
+src/keno/game/             draws, hits, payouts, settlement
+src/keno/bot/              the bot: money management, phase machine, combo strategy, ledger, CDP / live execution
+src/keno/research/         Monte-Carlo, parameter-freezing validation, risk grid
+src/keno/reporting/        metrics (hypergeometric, χ², drawdown, streaks) and report export
+src/keno/webapp/           local workbench (HTTP server + static pages)
+tools/                     sample/icon generation, release packaging
+docs/                      architecture, verification method, quick start (zh)
+tests/                     pytest suite (110 tests)
 ```
 
-状态写在哪里：exe 版写 `%LOCALAPPDATA%\KenoBOT`，源码版写 `data/webapp/`，可用 `KENO_BOT_HOME` 覆盖。
+Where state lives: the exe writes to `%LOCALAPPDATA%\KenoBOT`, a source checkout writes to `data/webapp/`, and `KENO_BOT_HOME` overrides both.
 
-## 7. 已知问题（欢迎 PR，标了难度）
+## How it relates to other open-source Keno projects
 
-| 编号 | 内容 | 位置 |
-| --- | --- | --- |
-| P0-1 | 组合模式下单注上限失效（`elif self.kind != "combo" and amount > self.max_bet` 让 combo 走不进来） | `src/keno/bot/stake_live.py` |
-| P0-2 | `next_bet_blows_stop()` 只看余额，不看止损/档位 | `src/keno/bot/stake_live.py` |
-| P0-3 | 下注确认丢失时用随机 `identifier`，超时后可能「钱动了、账没记」 | `src/keno/bot/stake_session.py` |
-| P1-5 | 恢复出来的运行记录 summary 恒为 0 | `src/keno/bot/ledger.py` |
+* **evilbot** (`poky1084/evilbot`) — the most active browser-side strategy framework; great to learn how a script hooks into a page. Keno is one of a dozen games it supports, and it does not verify the RNG or audit payouts.
+* **stake-bet-analyzer** and similar extensions — hot/cold and pattern statistics, no automated betting, no result verification.
+* **This repo** — read-only by default, verifiable, replayable; it does ship a real-money executor, but live betting must be switched on explicitly.
 
-更细的复现步骤、期望行为、验收标准写在 `CONTRIBUTING.md` 的 good first issues 里。
+## Roadmap (PRs welcome)
 
-## 8. 与其它开源 Keno 项目的关系
-
-* **evilbot**（`poky1084/evilbot`）：浏览器里跑的 JS/Lua 策略框架，生态最活跃，适合学「脚本怎么挂进页面」；Keno 只是它支持的十几个游戏之一，没有本地 RNG 复算与赔率审计。
-* **stake-bet-analyzer / Keno-Predictor 一类扩展**：做热号与模式统计，不自动下注，也不验证结果来源。
-* **本仓库**：默认只读、可验证、可回放；自带真钱执行器，但真钱路径必须显式打开。
-
-## 9. 路线图（Roadmap，欢迎 PR）
-
-* **脚本式策略插件**：给外部策略一个稳定的钩子（每局拿到历史与余额、返回 picks 与金额），让人不用改核心就能贡献选号逻辑——这是 **evilbot** 最值得学的一点（它的 `dobet()` 接口）。
-* **BET_LIST 对账**：下注失败/超时后用平台的注单列表反查补账，替掉现在「uuid identifier + 只看 nonce/余额」的做法（对应已知问题 P0-3）。
-* **英文界面**：静态页面文案目前以中文为主，i18n 化后对海外贡献者更友好。
-* **数据校验**：给 `data/**/*.jsonl` 加 JSON Schema 与 `collect` 侧的字段断言，坏行直接拒绝。
-* **跨平台路径清扫**：把所有个人路径收敛到 `keno/paths.py` + 环境变量（`KENO_CHROME_PROFILE` / `KENO_CHROME_PS1` / `KENO_BOT_HOME`），支持 macOS/Linux 的 Chrome 启动。
-* **WebSocket 数据源实装**：`src/keno/bot/ws.py` 目前是骨架，做实后可以不依赖轮询就看盘与对账。
-
-## 10. 免责声明
-
-Keno 是负期望的赌博游戏。作者实测结果是**亏损**（见 5.1）。这个仓库是研究与工程实践项目，不构成投资建议、不承诺任何收益。请只使用你输得起的钱，并遵守你所在地区的法律与平台条款。
-
-## 11. 许可
-
-MIT，见 `LICENSE`。
-
----
----
-
-# Keno BOT (English)
-
-A local **Keno** workbench and betting bot. Three things make it different from the usual Keno scripts:
-
-1. **Everything is re-derived locally.** Draws are reconstructed from the published `server_seed` / `client_seed` / `nonce` chain (HMAC-SHA256) byte for byte; the shipped sample can be verified with one command; captured live rounds verified 4/4 against the official calculator.
-2. **The payout table is audited, not trusted.** All 40 tiers of the official table are recomputed: RTP 98.65%–99.07% (low, 10 picks: 98.76%).
-3. **The results are published including the losses.** 9,331 real-money rounds: wagered 121.2212 U, returned 112.3248 U, net **−8.8964 U**, realized RTP 92.66%. A 20,000-run Monte-Carlo on the same stake ladder puts that at the 9.8–14.0 percentile — i.e. *normal variance*, not a rigged game; the real cost of the ladder was turnover (133.9× a flat minimum bet).
-
-### Quickstart
-
-```bash
-python -m pip install -e .
-python keno_bot_app.py     # workbench on http://127.0.0.1:8000 (falls back to 8001, 8002, ...)
-```
-
-* Paper mode is the default; it never touches a real account.
-* Live mode talks to **your already-logged-in Chrome** over CDP (`chrome --remote-debugging-port=9222`), reads the session token from the page's own requests, keeps it in memory only, and requires the explicit `--live-bets` / UI toggle.
-* Prebuilt Windows binary: `build_exe.ps1` (or download `KenoBOT.exe`).
-
-### Verify the sample yourself
-
-```bash
-python -m keno.cli verify-rounds --replay-file data/samples/rounds_sample.jsonl --seeds-file data/samples/seeds_sample.json
-```
-
-### Honest expectation setting
-
-Keno has negative expectation per bet. Money management changes the *shape* of the outcome distribution (drawdown, ruin speed, variance), never its sign. This repo exists to make that measurable: the null-model runs above show 38.2% profitable sessions in an 1,000-session Monte-Carlo (median −0.416 U) and 6.7% profitable days over a 30-day unattended simulation.
-
-### Roadmap (PRs welcome)
-
-* **Script-style strategy plugins** — a stable per-round hook (history + bankroll in, picks + stake out) so people can contribute selection logic without touching the core. This is the one lesson worth taking from **evilbot** (`dobet()`).
-* **Bet-list reconciliation** — after a failed/timed-out bet, look the wager up in the platform's own bet list instead of trusting nonce/balance deltas (see known issue P0-3).
+* **Script-style strategy plugins** — a stable per-round hook (history + bankroll in, picks + stake out) so selection logic can be contributed without touching the core. It is the one lesson worth taking from **evilbot** (its `dobet()` interface).
+* **Bet-list reconciliation** — after a failed or timed-out bet, look the wager up in the platform's own bet list instead of trusting nonce/balance deltas.
 * **English UI** — the static pages are still mostly Chinese; i18n them.
-* **Data contracts** — JSON Schema for `data/**/*.jsonl` plus field assertions in `collect`.
-* **Cross-platform paths** — funnel everything through `keno/paths.py` + env vars (`KENO_CHROME_PROFILE`, `KENO_CHROME_PS1`, `KENO_BOT_HOME`); support Chrome on macOS/Linux.
-* **Real WebSocket source** — `src/keno/bot/ws.py` is a skeleton; make it the primary feed.
+* **Data contracts** — JSON Schema for `data/**/*.jsonl` plus field assertions in `collect`, so malformed rows are rejected at the source.
+* **Cross-platform paths** — funnel every path through `keno/paths.py` + env vars (`KENO_CHROME_PROFILE`, `KENO_CHROME_PS1`, `KENO_BOT_HOME`) and support launching Chrome on macOS/Linux.
+* **A real WebSocket feed** — `src/keno/bot/ws.py` is a skeleton; make it the primary data source instead of polling.
 
-### License
+See `CONTRIBUTING.md` for good first issues with reproduction steps and acceptance criteria.
 
-MIT. Gambling is negative EV — this is a research/engineering project, not a money printer.
+## Disclaimer
 
+Keno is a negative-expectation gambling game. The author's own measured result is a **loss** (see above). This is a research and engineering project, not investment advice, and it promises nothing. Only play with money you can afford to lose, and follow the law and the platform terms that apply to you.
+
+## License
+
+**GNU General Public License v2.0** — see [`LICENSE`](LICENSE). Copyright (C) 2026 GeniusHu-tgty. There is no warranty, as stated in the license. You may use, study, share and modify this software, including commercially; if you distribute a modified version it must stay under the GPL and ship its source.
+
+---
+
+[中文说明 / Chinese README →](README.zh-CN.md)

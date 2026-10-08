@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from keno.provably_fair.hmac_rng import HmacSha256Rng
 from keno.provably_fair.float_generator import FloatGenerator, bytes_to_float
 

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Filesystem layout for Keno BOT.
 
 Read-only assets (configs, web assets, official payouts, sample rounds) are

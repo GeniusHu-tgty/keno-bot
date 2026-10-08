@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from __future__ import annotations
 
 """Combo V2 (侦察) — 对齐四档阶梯 bot 的资金档 + 赢了留号 + 热力选号。"""

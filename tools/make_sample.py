@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Generate the provably-fair sample that ships with Keno BOT.
 
 Every row is produced by this repo from seeds that exist nowhere else, so the

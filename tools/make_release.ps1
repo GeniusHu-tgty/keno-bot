@@ -29,6 +29,11 @@ foreach ($f in "README.md", "LICENSE", "CONTRIBUTING.md") {
 Get-ChildItem (Join-Path $root "*.bat") -File | ForEach-Object { Copy-Item $_.FullName $stage }
 Copy-Item (Join-Path $root "docs\*.md") (Join-Path $stage "docs")
 Copy-Item (Join-Path $root "docs\QUICKSTART_zh.txt") (Join-Path $stage "docs")
+if (Test-Path (Join-Path $root "README.zh-CN.md")) { Copy-Item (Join-Path $root "README.zh-CN.md") $stage }
+if (Test-Path (Join-Path $root "docs\images")) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $stage "docs\images") | Out-Null
+    Copy-Item (Join-Path $root "docs\images\*.png") (Join-Path $stage "docs\images")
+}
 
 "Keno BOT $Version (Windows x64)" | Set-Content -Encoding ASCII (Join-Path $stage "VERSION.txt")
 "Run: " + $Name + ".exe   (state dir: %LOCALAPPDATA%\KenoBOT, override with KENO_BOT_HOME)" |

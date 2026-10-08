@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Keno BOT launcher: start the local workbench and open the browser.
 
 This is also the PyInstaller entry script.  Writable state goes to a per-user

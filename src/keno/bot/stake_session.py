@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from __future__ import annotations
 
 """Connect the local bot to a real Stake.com Chrome session.

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 """Draw assets/icon.ico (and icon.png) for Keno BOT.  Run: python tools/make_icon.py"""
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 GeniusHu-tgty
+# SPDX-License-Identifier: GPL-2.0-only
 from keno.reporting.metrics import hypergeom_pmf
 from keno.synthetic import generate_rounds
 
