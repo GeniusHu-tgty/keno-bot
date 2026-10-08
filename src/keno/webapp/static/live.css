@@ -25,6 +25,17 @@ body.kb {
 .host-copy b { color: #fecaca; }
 .host-bar .btn { padding: 10px 18px; font-size: 15px; }
 .kb-brand { font-weight: 800; font-size: 18px; color: #f3c94a; letter-spacing: .02em; }
+.connect-note {
+  display: none;
+  margin: 0;
+  padding: 8px 16px;
+  background: #3a2a00;
+  border-bottom: 1px solid #5b4405;
+  color: #ffd479;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .kb-top-right { display: flex; gap: 8px; align-items: center; }
 .kb-user { color: #8b97ad; font-size: 12px; }
 .btn {

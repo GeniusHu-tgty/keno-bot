@@ -1,5 +1,3 @@
-# Copyright (C) 2026 GeniusHu-tgty
-# SPDX-License-Identifier: GPL-2.0-only
 from __future__ import annotations
 
 """Connect the local bot to a real Stake.com Chrome session.
@@ -24,7 +22,10 @@ from .stake_cdp import (
     find_stake_page,
     gql,
     page_challenge,
+    reload_tab,
+    sniff_any_stake_tab,
     sniff_auth_headers,
+    stake_pages,
 )
 
 USER_QUERY = (
@@ -80,6 +81,8 @@ PAGE_BALANCE_JS = r"""
 
 # In-memory only. Never serialize this dict to disk.
 _AUTH_HEADERS: dict | None = None
+# How many extra page reloads we may use to wake a silent tab while waiting for a login.
+MAX_LOGIN_NUDGES = 4
 _LIVE_STATUS: dict = {
     "status": "disconnected",
     "user_id": None,
@@ -102,6 +105,8 @@ _LIVE_STATUS: dict = {
     "challenge": False,
     "viability": None,
     "recent_bets": [],
+    "wait_seconds": 0,
+    "login_hint": None,
 }
 
 
@@ -192,6 +197,14 @@ def from_stake_numbers(numbers_0_based: list[int]) -> list[int]:
     return [int(n) + 1 for n in numbers_0_based]
 
 
+async def _apply_user_snapshot_for_page(cdp: str, headers: dict, page: dict) -> dict:
+    import websockets
+
+    async with websockets.connect(page["webSocketDebuggerUrl"], max_size=None, open_timeout=12) as ws:
+        client = Cdp(ws)
+        return await _apply_user_snapshot(client, headers, page)
+
+
 async def _connect_async(cdp: str, wait_login: float) -> dict:
     global _AUTH_HEADERS
     if not cdp_up(cdp):
@@ -199,19 +212,73 @@ async def _connect_async(cdp: str, wait_login: float) -> dict:
         if not ensure_cdp(cdp):
             return _set_status(
                 status="error",
-                error="CDP Chrome 未启动。已尝试拉起 Chrome，9222 仍无响应。",
+                error="CDP Chrome 未启动。已尝试运行 start-hunter-chrome.ps1，9222 仍无响应。",
                 need_login=False,
             )
-    _set_status(status="opening", error=None, need_login=False, page=KENO_URL, challenge=False)
-    page = await create_keno_target(cdp, force_new=True)
+    _set_status(
+        status="opening",
+        error=None,
+        need_login=False,
+        page=KENO_URL,
+        challenge=False,
+        wait_seconds=0,
+    )
+    # Reuse a Stake tab that is already open when there is one: the user may have just
+    # logged in there, and a second tab would leave us watching the wrong window.
+    pages = stake_pages(cdp)
+    page = _pick_stake_page(pages) if pages else await create_keno_target(cdp)
+    # First pass. Two shapes to catch:
+    #   * warm profile, session alive, page already loaded - it sends nothing by itself,
+    #     so reload it once to make the SPA re-issue its data burst (that request
+    #     carries x-access-token) while every other tab is watched passively;
+    #   * cold tab sitting on the login wall - never reload it, the user may be typing
+    #     and a reload would wipe the form.
+    warm = await _page_looks_logged_in(cdp, page)
+    headers, token_page = await sniff_any_stake_tab(
+        cdp,
+        timeout=10.0,
+        nudge_page_id=page.get("id") if warm else None,
+        reload_after=4.0,
+        max_reloads=1,
+        page_ids=[page.get("id")],
+    )
+    if headers:
+        _AUTH_HEADERS = headers
+        return await _apply_user_snapshot_for_page(cdp, headers, token_page or page)
+    return await _wait_for_login(cdp, page, wait_login)
+
+
+def _pick_stake_page(pages: list[dict]) -> dict:
+    """Prefer the Keno tab, otherwise any Stake tab we can attach to."""
+    for candidate in pages:
+        if "keno" in (candidate.get("url") or "").lower():
+            return candidate
+    return pages[0]
+
+
+async def _page_looks_logged_in(cdp: str, page: dict) -> bool:
+    """Cheap probe: is the page showing the logged-in chrome (wallet/avatar/user menu)?"""
     import websockets
 
+    try:
+        async with websockets.connect(page["webSocketDebuggerUrl"], max_size=None, open_timeout=8) as ws:
+            snapshot = await Cdp(ws).evaluate(LOGIN_JS, timeout=8)
+    except Exception:
+        return False
+    return bool(isinstance(snapshot, dict) and snapshot.get("hasUserChrome"))
+
+
+async def _wait_for_login(cdp: str, page: dict, wait_login: float) -> dict:
+    """Ask for a login when needed, then keep looking for the token until the deadline."""
+    global _AUTH_HEADERS
+    import websockets
+
+    started = time.time()
     async with websockets.connect(page["webSocketDebuggerUrl"], max_size=None, open_timeout=12) as ws:
         client = Cdp(ws)
         await client.call("Network.enable")
         await client.call("Page.enable")
         await client.call("Page.bringToFront")
-        await asyncio.sleep(3.0)
         challenge = await page_challenge(client)
         if challenge.get("challenge"):
             _set_status(
@@ -220,45 +287,73 @@ async def _connect_async(cdp: str, wait_login: float) -> dict:
                 challenge=True,
                 target_id=page.get("id"),
                 page=challenge.get("href") or page.get("url"),
-                error="Stake 风控页（Cloudflare/Kasada）。请在新开的 Chrome 标签里过完挑战，不要关那个窗口。",
+                wait_seconds=0,
+                error="Stake 风控页（Cloudflare/Kasada）。请在 Chrome 窗口里过完挑战，不要关那个窗口，过完会自动接上。",
             )
-            deadline = time.time() + max(20.0, wait_login)
-            while time.time() < deadline:
-                await asyncio.sleep(5)
-                challenge = await page_challenge(client)
-                if not challenge.get("challenge"):
-                    break
-            else:
-                return live_status()
-        snapshot = await client.evaluate(LOGIN_JS)
-        headers = None
-        try:
-            headers = await sniff_auth_headers(client, timeout=20, reload_page=False)
-        except Exception:
-            headers = None
-        if headers is None:
-            await client.evaluate(CLICK_LOGIN_JS)
+        else:
+            snapshot = await client.evaluate(LOGIN_JS)
+            if not (isinstance(snapshot, dict) and snapshot.get("hasUserChrome")):
+                await client.evaluate(CLICK_LOGIN_JS)
             _set_status(
                 status="need_login",
                 need_login=True,
                 challenge=False,
                 target_id=page.get("id"),
                 page=(snapshot or {}).get("url") if isinstance(snapshot, dict) else page.get("url"),
-                error="新开的 Stake 标签未登录。请在那个窗口完成登录（验证码要你点），不要用本地全自动页。",
+                wait_seconds=0,
+                error="还没拿到登录令牌。请在弹出的 Chrome 窗口完成登录（验证码要你点），登录后会自动接上。",
             )
-            deadline = time.time() + max(15.0, wait_login)
-            while time.time() < deadline:
-                await asyncio.sleep(4)
-                try:
-                    headers = await sniff_auth_headers(client, timeout=10, reload_page=False)
-                except Exception:
-                    headers = None
-                if headers:
-                    break
-            if headers is None:
-                return live_status()
-        _AUTH_HEADERS = headers
-        return await _apply_user_snapshot(client, headers, page)
+        deadline = time.time() + max(15.0, wait_login)
+        nudges = 0
+        logged_in_state = False
+        while time.time() < deadline:
+            window = max(5.0, min(12.0, deadline - time.time()))
+            # The reload has to be issued from inside the watching connection, otherwise it
+            # can fire the page's request before Network.enable is back on and we lose it.
+            nudge = bool(logged_in_state and nudges < MAX_LOGIN_NUDGES)
+            headers, token_page = await sniff_any_stake_tab(
+                cdp,
+                timeout=window,
+                nudge_page_id=page.get("id") if nudge else None,
+                reload_after=0.2 if nudge else None,
+                max_reloads=1 if nudge else 0,
+                page_ids=[page.get("id")],
+            )
+            if headers:
+                _AUTH_HEADERS = headers
+                return await _apply_user_snapshot_for_page(cdp, headers, token_page or page)
+            waited = int(time.time() - started)
+            challenge = await page_challenge(client)
+            state = await client.evaluate(LOGIN_JS)
+            logged_in_state = bool(isinstance(state, dict) and state.get("hasUserChrome"))
+            if challenge.get("challenge"):
+                note = (f"等待风控页通过… {waited}s / {int(wait_login)}s"
+                        "（请在 Chrome 窗口里过完挑战，过完会自动接上）。")
+            elif nudge:
+                nudges += 1
+                note = (f"已经登录，正在唤醒页面重发请求… {waited}s / {int(wait_login)}s"
+                        f"（第 {nudges} 次唤醒）")
+            elif logged_in_state:
+                note = f"已检测到登录，正在等页面自己发请求… {waited}s / {int(wait_login)}s"
+            else:
+                note = (f"等待登录中… {waited}s / {int(wait_login)}s："
+                        "请在弹出的 Chrome 窗口登录 Stake，登录后这里会自动接上。")
+            _set_status(
+                status="need_login",
+                need_login=True,
+                challenge=bool(challenge.get("challenge")),
+                target_id=page.get("id"),
+                wait_seconds=waited,
+                error=note,
+            )
+        return _set_status(
+            status="error",
+            need_login=True,
+            wait_seconds=int(time.time() - started),
+            target_id=page.get("id"),
+            error=("等登录超时：Chrome 里那个 Stake 窗口还没登录成功。登录完成后重新点一次「连接」即可，"
+                   "不需要关窗口。"),
+        )
 
 
 async def _apply_user_snapshot(client, headers: dict, page: dict) -> dict:
@@ -269,7 +364,8 @@ async def _apply_user_snapshot(client, headers: dict, page: dict) -> dict:
             status="need_login",
             need_login=True,
             target_id=page.get("id"),
-            error="新标签已打开但没有用户。请在 Chrome 里登录账号。",
+            wait_seconds=0,
+            error="页面拿到了登录令牌但查询不到用户。请在 Chrome 里重新登录账号。",
         )
     available = _normalize_balances(user.get("balances"))
     amount, currency = _pick_balance(available)
@@ -327,6 +423,8 @@ async def _apply_user_snapshot(client, headers: dict, page: dict) -> dict:
         need_login=False,
         challenge=False,
         error=None,
+        wait_seconds=0,
+        login_hint=None,
         user_id=user.get("id"),
         user_name=user.get("name"),
         balances=nonzero[:8],

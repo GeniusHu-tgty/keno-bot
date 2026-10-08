@@ -1,5 +1,3 @@
-# Copyright (C) 2026 GeniusHu-tgty
-# SPDX-License-Identifier: GPL-2.0-only
 from __future__ import annotations
 
 """CDP helpers for a real Stake.com tab.
@@ -19,8 +17,8 @@ from decimal import Decimal
 from pathlib import Path
 
 DEFAULT_CDP = "http://127.0.0.1:9222"
-CHROME_PROFILE = Path(os.environ.get("KENO_CHROME_PROFILE") or (Path.home() / ".keno-bot" / "chrome-profile"))
-CHROME_PS1 = Path(os.environ.get("KENO_CHROME_PS1") or (Path.home() / ".keno-bot" / "start-chrome.ps1"))
+HUNTER_PROFILE = Path(r"C:\Users\Administrator\.hunter\chrome-profile")
+HUNTER_CHROME_PS1 = Path(r"C:\Users\Administrator\.hunter\bin\start-hunter-chrome.ps1")
 _CHROME_CANDIDATES = (
     Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),
     Path(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"),
@@ -66,10 +64,10 @@ def _wmi_launch_chrome() -> bool:
     browser = _chrome_exe()
     if browser is None:
         return False
-    CHROME_PROFILE.mkdir(parents=True, exist_ok=True)
+    HUNTER_PROFILE.mkdir(parents=True, exist_ok=True)
     command = (
         f'"{browser}" --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 '
-        f'--remote-allow-origins=* --user-data-dir="{CHROME_PROFILE}" '
+        f'--remote-allow-origins=* --user-data-dir="{HUNTER_PROFILE}" '
         "--no-first-run --no-default-browser-check --disable-session-crashed-bubble about:blank"
     )
     script = (
@@ -90,11 +88,11 @@ def _wmi_launch_chrome() -> bool:
 
 
 def ensure_cdp(cdp: str = DEFAULT_CDP) -> bool:
-    """Start Chrome on 9222, outside this process job so it stays up."""
+    """Start hunter Chrome on 9222, outside this process job so it stays up."""
     if cdp_up(cdp):
         return True
     launched = False
-    if CHROME_PS1.exists():
+    if HUNTER_CHROME_PS1.exists():
         try:
             subprocess.run(
                 [
@@ -103,7 +101,7 @@ def ensure_cdp(cdp: str = DEFAULT_CDP) -> bool:
                     "-ExecutionPolicy",
                     "Bypass",
                     "-File",
-                    str(CHROME_PS1),
+                    str(HUNTER_CHROME_PS1),
                 ],
                 timeout=40,
                 check=False,
@@ -248,16 +246,43 @@ async def page_challenge(client: Cdp) -> dict:
     return value if isinstance(value, dict) else {"challenge": False}
 
 
-async def sniff_auth_headers(client: Cdp, timeout: float = 35.0, reload_page: bool = False) -> dict:
-    """Prefer existing in-page GraphQL traffic. Reload only as a last resort."""
+async def reload_tab(client: Cdp, ignore_cache: bool = False) -> bool:
+    """Reload the attached tab. This nudge is what makes an idle SPA talk again."""
+    try:
+        await client.call("Page.reload", {"ignoreCache": bool(ignore_cache)}, timeout=15)
+        return True
+    except Exception:
+        return False
+
+
+async def sniff_auth_headers(
+    client: Cdp,
+    timeout: float = 35.0,
+    reload_page: bool = False,
+    reload_after: float | None = None,
+    max_reloads: int = 2,
+) -> dict:
+    """Catch an authenticated GraphQL request on this tab.
+
+    A page that was already loaded when we attached (the normal case with a warm
+    profile: the user is logged in before we look) sends nothing by itself, so the
+    request we need never arrives. When reload_after is set we reload the tab that
+    often (at most max_reloads times) so the SPA re-issues its data burst, which
+    carries x-access-token while the session is alive.
+    """
     loop = asyncio.get_event_loop()
-    deadline = loop.time() + timeout
-    reloaded = False
+    started = loop.time()
+    deadline = started + timeout
+    interval = reload_after if reload_after is not None else (timeout * 0.45 if reload_page else None)
+    reloads = 0
+    next_reload = started + interval if interval is not None else None
     while loop.time() < deadline:
         remaining = deadline - loop.time()
-        if remaining < timeout * 0.45 and reload_page and not reloaded:
-            await client.call("Page.reload", {"ignoreCache": False}, timeout=15)
-            reloaded = True
+        if next_reload is not None and loop.time() >= next_reload and reloads < max_reloads:
+            reloads += 1
+            await reload_tab(client)
+            next_reload = loop.time() + interval
+            continue
         try:
             msg = json.loads(await asyncio.wait_for(client.ws.recv(), timeout=min(4, remaining)))
         except asyncio.TimeoutError:
@@ -271,6 +296,79 @@ async def sniff_auth_headers(client: Cdp, timeout: float = 35.0, reload_page: bo
         if headers.get("x-access-token") or headers.get("X-Access-Token"):
             return headers
     raise RuntimeError("no x-access-token; Stake tab is probably not logged in")
+
+
+def stake_pages(cdp: str = DEFAULT_CDP) -> list[dict]:
+    """Every open stake.com tab we could talk to."""
+    try:
+        pages = list_pages(cdp)
+    except Exception:
+        return []
+    return [p for p in pages if "stake.com" in (p.get("url") or "") and p.get("webSocketDebuggerUrl")]
+
+
+async def sniff_any_stake_tab(
+    cdp: str = DEFAULT_CDP,
+    timeout: float = 12.0,
+    nudge_page_id: str | None = None,
+    reload_after: float | None = None,
+    max_reloads: int = 0,
+    page_ids: list[str] | None = None,
+) -> tuple[dict | None, dict | None]:
+    """Watch every open stake.com tab and return the first authenticated request.
+
+    Only the tab named by nudge_page_id is ever reloaded; the others are watched
+    passively, so a login done in another window is still picked up.
+    Returns (headers, page), or (None, None) when nothing showed up in time.
+    """
+    import websockets
+
+    pages = stake_pages(cdp)
+    if page_ids:
+        # Whatever tab we are actually working with must be watched too: its URL may
+        # not look like stake.com yet (mirror domain, still redirecting, blank tab).
+        known = {p.get("id") for p in pages}
+        for page in list_pages(cdp):
+            if page.get("id") in page_ids and page.get("id") not in known and page.get("webSocketDebuggerUrl"):
+                pages.append(page)
+                known.add(page.get("id"))
+    if not pages:
+        return None, None
+
+    async def watch(page: dict) -> tuple[dict, dict]:
+        # Passive by default: reloading someone's half-typed login form is worse than waiting.
+        may_nudge = nudge_page_id is not None and page.get("id") == nudge_page_id
+        async with websockets.connect(page["webSocketDebuggerUrl"], max_size=None, open_timeout=8) as ws:
+            client = Cdp(ws)
+            try:
+                await client.call("Network.enable", timeout=10)
+            except Exception:
+                pass
+            headers = await sniff_auth_headers(
+                client,
+                timeout=timeout,
+                reload_after=reload_after if may_nudge else None,
+                max_reloads=max_reloads if may_nudge else 0,
+            )
+            return headers, page
+
+    tasks = [asyncio.create_task(watch(page)) for page in pages]
+    pending: set = set(tasks)
+    try:
+        while pending:
+            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                try:
+                    headers, page = task.result()
+                except Exception:
+                    continue
+                if headers:
+                    return headers, page
+        return None, None
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
 
 
 async def gql(

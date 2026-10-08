@@ -661,10 +661,20 @@ async function refreshPreview() {
 
 function renderStatus(st) {
   connected = st.status === "connected";
-  if (connected) $("acct").textContent = st.user_name || "已连接";
-  else if (st.status === "need_login") $("acct").textContent = "请在 Chrome 标签登录 Stake";
-  else if (st.connecting) $("acct").textContent = "正在打开 Stake…";
-  else $("acct").textContent = "未连接";
+  const acct = $("acct");
+  if (acct) acct.title = st.error || "";
+  if (connected) acct.textContent = st.user_name || "已连接";
+  else if (st.status === "need_login") {
+    const waited = Number(st.wait_seconds || 0);
+    acct.textContent = waited > 0
+      ? `等待登录 ${waited}s…`
+      : "请在 Chrome 窗口登录 Stake";
+    setConnectBanner(st);
+  } else if (st.status === "error") {
+    acct.textContent = "连接没成功，点「连接」重试";
+    setConnectBanner(st);
+  } else if (st.connecting || st.status === "opening") acct.textContent = "正在打开 Stake…";
+  else acct.textContent = "未连接";
   $("btn-start").disabled = !connected || !!st.running;
   if ($("btn-loop")) $("btn-loop").disabled = !connected || !!st.running;
   if ($("btn-host-start")) $("btn-host-start").disabled = !connected || !!st.running;
@@ -1015,18 +1025,31 @@ function pnlFromRecordRows(records) {
   };
 }
 
+// One line under the toolbar so a slow login is visible instead of silent.
+function setConnectBanner(st) {
+  const el = $("connect-note");
+  if (!el) return;
+  const msg = st.error || "";
+  el.textContent = msg;
+  el.style.display = msg ? "block" : "none";
+}
+
 async function connect() {
   $("btn-connect").disabled = true;
   $("acct").textContent = "正在弹出 Chrome…";
   toast("正在弹出 Chrome，请在那个窗口登录 Stake", 5000);
+  let lastNote = "";
   try {
     await api("/api/live/connect", "POST", { wait_login: 180 });
     const start = Date.now();
-    while (Date.now() - start < 190000) {
+    while (Date.now() - start < 200000) {
       const st = await api("/api/live/status");
       renderStatus(st);
-      if (st.status === "connected" || st.status === "error") break;
-      await new Promise((r) => setTimeout(r, 2000));
+      const note = st.error || "";
+      if (note && note !== lastNote) { lastNote = note; toast(note, 8000); }
+      if (st.status === "connected") break;
+      if (st.status === "error") break;
+      await new Promise((r) => setTimeout(r, 1500));
     }
     await loadAll();
     await refreshPreview();
