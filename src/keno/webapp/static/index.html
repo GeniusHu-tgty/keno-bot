@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Keno BOT · 本地全自动</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">Keno BOT <span class="sub">本地全自动 · 虚拟盘 · 无真钱</span></div>
+  <div class="top-actions">
+    <a class="btn-link" href="/live">打开实盘台</a>
+    <button id="btn-new-session">新会话</button>
+    <button id="btn-new-batch">新批次</button>
+    <button id="btn-export">导出记录</button>
+  </div>
+</header>
+
+<section class="session-bar" id="session-bar"></section>
+
+<main>
+  <section class="card game">
+    <div class="game-wrap">
+      <aside class="controls">
+        <div class="tabs">
+          <button class="tab" data-tab="manual">手动投注</button>
+          <button class="tab active" data-tab="auto">全自动</button>
+        </div>
+        <div id="tab-manual" class="hidden">
+          <div class="row-between"><span class="lbl">投注额</span><span class="hint" id="amt-hint">US$0.00</span></div>
+          <div class="amount-row">
+            <div class="amt-box"><input id="amount" type="text" value="0.00010000" placeholder="0.00000000"><span class="coin">T</span></div>
+            <button class="mini" id="btn-half">½</button>
+            <button class="mini" id="btn-double">2×</button>
+          </div>
+          <div class="lbl">难度</div>
+          <select id="risk" class="select">
+            <option value="classic">典型</option>
+            <option value="low" selected>低等</option>
+            <option value="medium">中等</option>
+            <option value="high">高等</option>
+          </select>
+          <button id="btn-random" class="btn-steel">随机挑选</button>
+          <button id="btn-clear" class="btn-steel">清空桌面</button>
+          <button id="btn-bet" class="btn-bet" disabled>投注</button>
+        </div>
+        <div id="tab-auto">
+          <div class="lbl">策略</div>
+          <select id="auto-kind" class="select">
+            <option value="phase" selected>阶段机（探针→恢复→取利）</option>
+            <option value="probe">探针窗口（0.0001→小额窗口）</option>
+            <option value="fractional">余额分数（0.05%）</option>
+            <option value="adaptive">自适应分数（亏损降注）</option>
+            <option value="capped">有限恢复（1.25×，最多4步）</option>
+            <option value="flat">平注</option>
+            <option value="martingale">马丁（仅失败对照）</option>
+          </select>
+          <div class="lbl">选号</div>
+          <select id="auto-picks" class="select">
+            <option value="pattern" selected>同组复用（探针与实注共用，约4局换组）</option>
+            <option value="block-random">每15分钟随机一组</option>
+            <option value="random">每局随机</option>
+            <option value="fixed-pattern">固定号码</option>
+            <option value="hot">热号实验</option>
+            <option value="cold">冷号实验</option>
+            <option value="avoid-cold-zone">避开冷区实验</option>
+            <option value="balanced-random">均衡随机</option>
+          </select>
+          <div class="lbl">难度</div>
+          <select id="auto-risk" class="select">
+            <option value="low" selected>低等</option>
+            <option value="classic">典型</option>
+            <option value="medium">中等</option>
+            <option value="high">高等</option>
+          </select>
+          <div class="dual">
+            <label class="lbl">每会话局数<input id="auto-rounds" type="number" value="176"></label>
+            <label class="lbl">选号数<input id="auto-pick-count" type="number" min="1" max="10" value="10"></label>
+          </div>
+          <div class="dual">
+            <label class="lbl">基础注<input id="auto-base" type="text" value="0.01"></label>
+            <label class="lbl">会话资金<input id="auto-bankroll" type="text" value="10"></label>
+          </div>
+          <div class="dual">
+            <label class="lbl">止盈<input id="auto-win" type="text" value="0.5"></label>
+            <label class="lbl">止损<input id="auto-loss" type="text" value="2.0"></label>
+          </div>
+          <div class="dual">
+            <label class="lbl">最大回撤<input id="auto-dd" type="text" placeholder="可选"></label>
+            <label class="lbl">日亏损上限<input id="auto-daily-loss" type="text" value="10"></label>
+          </div>
+          <div class="dual">
+            <label class="lbl">节奏（秒/局）<input id="auto-pace" type="number" min="0.1" step="0.1" value="3.5"></label>
+            <label class="lbl">换组局数<input id="auto-block" type="number" min="1" value="257"></label>
+          </div>
+          <div class="dual">
+            <label class="lbl">无人值守小时<input id="auto-hours" type="number" min="0" step="0.1" value="24"></label>
+            <label class="lbl">最多会话（0=不限）<input id="auto-max-sessions" type="number" min="0" value="0"></label>
+          </div>
+          <label class="chk"><input id="auto-realtime" type="checkbox" checked> 按 3.5 秒节奏实时播放</label>
+          <label class="chk"><input id="auto-unattended" type="checkbox" checked> 无人值守（止盈/止损后自动开下一会话）</label>
+          <div id="auto-progress" class="run-progress">未运行 · 默认：低等 10 选 · 阶段机 · 探针 0.0001</div>
+          <div class="dual">
+            <button id="btn-auto" class="btn-bet">开始全自动</button>
+            <button id="btn-auto-cancel" class="btn-steel" disabled>停止</button>
+          </div>
+        </div>
+      </aside>
+      <div class="board-col">
+        <div class="board" id="board"></div>
+        <div class="paytable-row" id="paytable-row"></div>
+        <div class="hits-row" id="hits-row"></div>
+        <div class="status-line" id="status-line">请选择 1–10 个数字以开始游戏</div>
+      </div>
+    </div>
+    <div class="game-toolbar">
+      <div class="tb-left">
+        <button class="icon-btn" id="btn-jump-stats" title="统计">▤</button>
+        <button class="icon-btn" id="btn-fullscreen" title="全屏">⛶</button>
+      </div>
+      <div class="tb-brand">Keno BOT · 本地全自动</div>
+      <button class="btn-fairness" id="btn-fairness">公平性</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 class="pro-title">Pro 阶段统计</h3>
+    <div class="pro-legend">R1=恢复　|　R2=收益1　|　R3=收益2</div>
+    <div class="table-wrap"><table id="stage-table"></table></div>
+  </section>
+
+  <section class="card">
+    <h3>命中分布（本会话）</h3>
+    <div class="table-wrap"><table id="hit-table"></table></div>
+  </section>
+
+  <section class="card monitor-card">
+    <h3>运行监控（描述性，不预测下一局）</h3>
+    <div id="regime-panel" class="monitor-grid"></div>
+    <div id="theory-panel" class="theory-panel"></div>
+    <div class="table-wrap"><table id="block-table"></table></div>
+  </section>
+
+  <section class="card">
+    <h3>种子（本地可证明公平）</h3>
+    <div class="seed-grid">
+      <label class="fld">客户端种子 <input id="client-seed"></label>
+      <div class="seed-item">服务器种子哈希<br><code id="hash"></code></div>
+      <div class="seed-item">nonce <b id="nonce">0</b></div>
+      <button id="btn-rotate">轮换并揭示</button>
+      <button id="btn-verify">验证全部</button>
+    </div>
+    <div class="autorotate">
+      <span class="seed-item">自动轮换：每 <input id="rot-rounds" type="number" min="0" value="0"> 局 / 每 <input id="rot-minutes" type="number" min="0" value="0"> 分钟（0=关闭）</span>
+      <button id="btn-rot-save">保存</button>
+      <button id="btn-selftest">随机性自检</button>
+    </div>
+    <div id="selftest-result" class="seed-note"></div>
+    <div class="seed-note">平台不会自动轮换种子（实测：账号 4 局跨 8 小时同一配对）；此设置仅为对齐「每批换种子」的习惯 —— 对概率零影响，每局结果由 (server_seed, client_seed, nonce) 唯一确定。</div>
+    <div id="revealed" class="revealed"></div>
+    <div class="calc-box">
+      <div class="lbl">计算器（对照官方公平性计算页 provably-fair/calculation）</div>
+      <div class="calc-row">
+        <input id="calc-ss" placeholder="服务器种子（或哈希串）">
+        <input id="calc-cs" placeholder="客户端种子">
+        <input id="calc-nonce" type="number" value="1" placeholder="nonce">
+        <button id="btn-calc">计算</button>
+      </div>
+      <div id="calc-out" class="seed-note"></div>
+    </div>
+  </section>
+</main>
+
+<section class="card full">
+  <h3>策略实验室（自动对照 · 本地蒙特卡洛）</h3>
+  <div class="lab-grid">
+    <label class="fld">会话数 <input id="lab-sessions" type="number" value="5000"></label>
+    <label class="fld">每会话局数 <input id="lab-rounds" type="number" value="176"></label>
+    <label class="fld">节奏 <input id="lab-pace" type="number" min="0.1" step="0.1" value="3.5"></label>
+    <label class="fld">风险
+      <select id="lab-risk">
+        <option value="medium" selected>中等</option>
+        <option value="low">低等</option>
+        <option value="classic">典型</option>
+        <option value="high">高等</option>
+      </select>
+    </label>
+    <label class="fld">选号数 <input id="lab-pick-count" type="number" min="1" max="10" value="10"></label>
+    <label class="fld">选号机制
+      <select id="lab-selection-mode">
+        <option value="random" selected>每局随机</option>
+        <option value="block-random">每15分钟换组</option>
+        <option value="fixed-pattern">固定号码</option>
+        <option value="hot">热号</option>
+        <option value="cold">冷号</option>
+        <option value="avoid-cold-zone">避开冷区</option>
+        <option value="balanced-random">分区随机</option>
+      </select>
+    </label>
+    <label class="chk"><input type="checkbox" id="lab-flat-min" checked> 最低平注</label>
+    <label class="chk"><input type="checkbox" id="lab-flat-001" checked> 0.001平注</label>
+    <label class="chk"><input type="checkbox" id="lab-fractional" checked> 分数下注</label>
+    <label class="chk"><input type="checkbox" id="lab-adaptive" checked> 自适应分数</label>
+    <label class="chk"><input type="checkbox" id="lab-probe" checked> 探针窗口</label>
+    <label class="chk"><input type="checkbox" id="lab-capped" checked> 有限恢复</label>
+    <label class="chk"><input type="checkbox" id="lab-phase" checked> 阶段机</label>
+    <label class="chk"><input type="checkbox" id="lab-mart" checked> 马丁对照</label>
+    <button id="btn-lab" class="primary">运行对照</button>
+    <button id="btn-lab-cancel" disabled>停止实验</button>
+  </div>
+  <div id="lab-note" class="lab-note"></div>
+  <div class="table-wrap"><table id="lab-table"></table></div>
+</section>
+
+<section class="card full">
+  <h3>本会话虚拟盘历史</h3>
+  <div id="session-log" class="session-log"></div>
+  <div class="table-wrap"><table id="history"></table></div>
+</section>
+<section class="card full">
+  <h3>总历史（虚拟盘，不随新会话清空）</h3>
+  <div class="table-wrap"><table id="history-lifetime"></table></div>
+</section>
+
+<div id="toast" class="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

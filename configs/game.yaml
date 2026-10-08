@@ -1,0 +1,9 @@
+game: stake_keno
+board_size: 40
+draw_count: 10
+min_picks: 1
+max_picks: 10
+rng:
+  digest: HMAC-SHA256
+  message_template: "{client_seed}:{nonce}:{cursor}"
+  byte_order: big

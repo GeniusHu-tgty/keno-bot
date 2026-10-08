@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Keno BOT</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<link rel="stylesheet" href="/static/live.css?v=pnl-io">
+</head>
+<body class="kb">
+<header class="kb-top">
+  <div class="kb-brand">Keno BOT</div>
+  <div class="kb-top-right">
+    <span id="acct" class="kb-user">未连接</span>
+    <button id="btn-connect" class="btn ghost">连接（弹出 Chrome 登录）</button>
+    <a class="btn ghost" href="/">虚拟盘</a>
+  </div>
+</header>
+<section class="host-bar" id="host-bar">
+  <label class="host-switch">
+    <input id="autohost" type="checkbox" checked>
+    <span>灵魂托管</span>
+  </label>
+  <label class="host-money">
+    <input id="live-bets" type="checkbox">
+    <span>允许真钱</span>
+  </label>
+  <p class="host-copy">低等 10 选 + 探针赢了才上实战。二连败靠低等变稀（约 25 局 1 次），发生了照样爬到第 4 档。4 档赢了歇 3 分钟，四连败/止损歇 15 分钟。点「开始托管」挂着即可，<b>不要点无限跑</b>。不接 AI 选号。</p>
+  <button type="button" class="btn gold" id="btn-host-start" disabled>开始托管</button>
+  <button type="button" class="btn red" id="btn-host-stop" disabled>停止</button>
+</section>
+
+<section class="kb-hero" id="hero">
+  <div class="hero-cell"><div class="v pos" id="h-profit">$0.00000000</div><div class="k">总盈利</div></div>
+  <div class="hero-cell"><div class="v" id="h-rounds">0</div><div class="k">局数</div></div>
+  <div class="hero-cell"><div class="v" id="h-winrate">0%</div><div class="k">成功率</div></div>
+  <div class="hero-cell"><div class="v" id="h-staked">$0.00000000</div><div class="k">投资金</div></div>
+  <div class="hero-cell"><div class="v" id="h-returned">$0.00000000</div><div class="k">回收金</div></div>
+  <div class="hero-cell"><div class="v" id="h-balance">—</div><div class="k">库存</div></div>
+  <div class="hero-cell"><div class="v" id="h-level">1</div><div class="k">等级</div></div>
+  <div class="hero-cell"><div class="v" id="h-time">—</div><div class="k">已打时长</div></div>
+  <div class="hero-split" id="h-split">还没有这一次的局</div>
+</section>
+
+<main class="kb-main">
+  <section class="card stage-card">
+    <h2>阶段金额</h2>
+    <p class="hint" id="stage-rule">输了（收回小于投下）进下一档；赢了（收回 ≥ 投下）回到 1 档。低等：0/1 命中算输，2 命中起算赢。中等：0/1/2 命中算输，3 命中起算赢。号：赢了留，输了换。</p>
+    <div id="stage-now" class="stage-now">当前：还没开始 · 点开始才计时、才下注</div>
+    <div id="stage-ladder" class="stage-ladder"></div>
+  </section>
+  <section class="card">
+    <h2>等级统计</h2>
+    <div class="table-wrap"><table id="tbl-level"></table></div>
+  </section>
+  <section class="card">
+    <h2 class="warn">连败统计 <span class="sub" id="streak-cap">最大 0连败 | 当前 0连败</span></h2>
+    <div class="table-wrap"><table id="tbl-streak"></table></div>
+  </section>
+  <section class="card">
+    <h2>命中统计</h2>
+    <div class="table-wrap"><table id="tbl-hits"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>号码分析 <span class="sub">100局 | 期望 25%</span></h2>
+    <div class="heat-legend"><span>低</span><i></i><span>高</span></div>
+    <div class="heatmap" id="heatmap"></div>
+    <h3>推荐号码</h3>
+    <div class="recs" id="recs"></div>
+    <h3>分区分析</h3>
+    <div class="zones" id="zones"></div>
+  </section>
+
+  <section class="play">
+    <div class="board-col">
+      <div class="board-head">Keno Board <span class="pill" id="board-mode">自动</span></div>
+      <div class="board" id="board"></div>
+      <div class="last-line" id="last-line">还没有局</div>
+      <div class="board-actions">
+        <button class="btn blue" id="btn-auto-pick">自动选择</button>
+        <button class="btn ghost" id="btn-clear">初始化</button>
+        <button class="btn green" id="btn-one" disabled>打一局</button>
+      </div>
+      <div class="paytable">
+        <div class="pt-title">赔率表</div>
+        <div id="paytable"></div>
+      </div>
+    </div>
+
+    <aside class="set-col">
+      <h2>设置</h2>
+      <label class="fld">STAKE 连接
+        <input value="点右上角「连接」，会弹出 Chrome，在里面登录 Stake" disabled>
+      </label>
+      <p class="hint phase">灵魂托管 = 探针赢了才上实战 + 二连败回探针 + 绿了歇一会儿再开。不是 AI。点一键、勾真钱、勾托管、点开始，挂着即可。</p>
+      <label class="fld">投注额（1 档）
+        <input id="base-bet" value="0.001">
+      </label>
+      <label class="fld">风险
+        <select id="risk">
+          <option value="low" selected>Low 低等</option>
+          <option value="medium">Medium 中等</option>
+          <option value="classic">Classic 典型</option>
+          <option value="high">High 高等</option>
+        </select>
+      </label>
+      <label class="fld">选号数
+        <input id="pick-count" type="number" min="1" max="10" value="10">
+      </label>
+      <label class="fld">策略
+        <select id="strategy">
+          <option value="combo" selected>Combo V2（侦察）</option>
+        </select>
+      </label>
+      <p class="hint">探针不提高成功率（低等仍约 80%）。它只让实战少在连败里爬档：侦察赢了才上 1 档；实战连输 2 把回探针，不爬 3/4 档。</p>
+      <label class="fld">冷却（秒）
+        <input id="pace" type="number" min="3" step="0.1" value="3">
+      </label>
+      <label class="fld">本轮止损 ($)
+        <input id="loss" value="1.50" placeholder="空=不按本轮止损">
+      </label>
+      <label class="fld">本轮止盈（绿了就停）
+        <input id="win" value="0.15" placeholder="空=不按止盈停">
+      </label>
+      <label class="fld">当天止损 ($)
+        <input id="daily-loss" value="3.00" placeholder="空=不管天">
+      </label>
+      <label class="fld">当天止盈（空=不管天）
+        <input id="daily-win" value="0.50" placeholder="空=不按当天停">
+      </label>
+      <label class="fld">肥尾倍率收口
+        <input id="fat-mult" value="8">
+      </label>
+      <label class="fld">最大连败
+        <input id="max-streak" value="4">
+      </label>
+      <label class="fld">每一轮局数
+        <input id="rounds" type="number" value="200">
+      </label>
+      <label class="check"><input id="stop-max-win" type="checkbox" checked> 第4档赢了就收（把爆发留下）</label>
+      <label class="check"><input id="playbook" type="checkbox" checked> 灵魂收口（绿了先停这一轮）</label>
+      <p class="hint">托管开关在页面最顶上那条黄条里，点「开始托管」。不要用下面的无限跑。</p>
+      <label class="fld">收绿之后
+        <select id="after-bank">
+          <option value="rest" selected>歇一会儿再开（托管）</option>
+          <option value="stop">整段停（锁住）</option>
+          <option value="hunt">开下一轮猎</option>
+          <option value="grind">改去磨</option>
+        </select>
+      </label>
+      <label class="fld">绿了歇（秒）
+        <input id="rest-seconds" type="number" min="30" value="180">
+      </label>
+      <label class="fld">止损/四连败歇（秒）
+        <input id="hard-rest-seconds" type="number" min="60" value="900">
+      </label>
+      <p class="hint" id="stop-hint">6 小时内最多 2 枪第4档。5 命中以上锁 6 小时不再爬 3/4 档。第4档输了不连打，改探针+1档。24 小时不停，但大档有配额。</p>
+
+      <h3>马丁</h3>
+      <label class="check"><input id="use-mart" type="checkbox" checked> 使用马丁</label>
+      <label class="fld">模式
+        <select id="mart-mode"><option>基础 (Basic)</option></select>
+      </label>
+      <label class="check"><input id="reset-max" type="checkbox"> 最大档还输就重置</label>
+      <label class="fld">倍数
+        <input id="mult" value="1.00" disabled>
+      </label>
+      <label class="fld">开始等级
+        <input id="start-level" type="number" min="1" value="1">
+      </label>
+      <label class="fld">最大等级
+        <input id="max-level" type="number" min="1" value="4">
+      </label>
+      <label class="fld">自定义金额
+        <input id="custom-amounts" value="0.001,0.011,0.12,1.33">
+      </label>
+      <div class="preset-block">
+        <div class="preset-label">灵魂 · 收绿就停（先点这一颗）</div>
+        <div class="presets saved-modes">
+          <button type="button" class="on rec mode-save soul" data-ladder="0.001,0.011,0.12,1.33" data-max="4" data-risk="low" data-loss="1.50" data-win="0.15" data-daily="0.50" data-daily-loss="3" data-fat="8" data-rounds="200" data-streak="4" data-recon="1" data-recon-n-win="1" data-recon-n-loss="0" data-recon-real-n="1" data-recon-return="1" data-recon-abort="0" data-recon-abort-after="0" data-playbook="1" data-after-bank="rest" data-autohost="1" data-rest="180" data-hard-rest="900" data-stop-max-win="1" data-name="灵魂托管 0.001" data-toast="0.001 托管：本轮止损 1.50 / 止盈 0.15，当天止损 3 / 止盈 0.50。顶上点开始托管。">一键 · 灵魂托管（0.001）</button>
+          <button type="button" class="mode-save soul" data-ladder="0.01,0.11,1.20,13.3" data-max="4" data-risk="low" data-loss="15" data-win="2" data-daily="5" data-daily-loss="30" data-fat="8" data-rounds="200" data-streak="4" data-recon="1" data-recon-n-win="1" data-recon-n-loss="0" data-recon-real-n="1" data-recon-return="1" data-recon-abort="0" data-recon-abort-after="0" data-playbook="1" data-after-bank="rest" data-autohost="1" data-rest="180" data-hard-rest="900" data-stop-max-win="1" data-name="灵魂托管 0.01" data-toast="0.01 托管：本轮止损 15 / 止盈 2，当天止损 30 / 止盈 5。库存≥20。顶上点开始托管。">灵魂托管 · 0.01（库存≥20）</button>
+        </div>
+        <div class="preset-label">旧档 · 侦察开（不锁绿）</div>
+        <div class="presets">
+          <button type="button" data-ladder="0.001,0.011,0.12,1.33" data-max="4" data-risk="low" data-loss="1.50" data-win="" data-rounds="200" data-streak="4" data-recon="1" data-recon-n-win="1" data-recon-n-loss="0" data-recon-real-n="1" data-recon-return="1" data-recon-abort="0" data-playbook="0" data-stop-max-win="1" data-name="经典档" data-toast="旧档：侦察开、止盈空。会继续打。要锁绿用上面灵魂。">一键 · 经典档（旧）</button>
+        </div>
+        <div class="preset-label">录像原串</div>
+        <div class="presets">
+          <button type="button" data-ladder="0.01,0.02,0.06,0.16,0.43" data-max="5" data-risk="medium" data-loss="1.50" data-win="0.50" data-name="录像中等五档" data-toast="录像中等五档。满爬 0.68；第5档再下一把 +0.43。止损 1.50 够约两次再下，止盈 0.50 爆发回来就收。">录像中等五档</button>
+          <button type="button" data-ladder="0.001,0.011,0.12,1.33" data-max="4" data-risk="low" data-loss="1.50" data-win="0.05" data-rounds="200" data-streak="4" data-toast="和上面一键同一条。">录像低等四档</button>
+          <button type="button" data-ladder="0.01,0.11,1.21,13.3" data-max="4" data-risk="low" data-loss="1.50" data-win="2.00" data-rounds="200" data-streak="3" data-toast="和「一键 · 低等回本 0.01」同一条。">录像低等陡四档</button>
+          <button type="button" data-ladder="0.01,0.11,1.21,13.3" data-max="4" data-risk="low" data-loss="15" data-win="2.00" data-rounds="400" data-streak="4" data-recon="1" data-recon-n-win="1" data-recon-n-loss="0" data-recon-real-n="1" data-recon-return="1" data-recon-abort="0" data-name="参考图 0.01四档+侦察" data-toast="参考 +21 那盘的梯子 0.01/0.11/1.21/13.3，加上侦察：赢了才上 0.01，实战照爬，赢了回侦察。13.3 输了是 −13.3，止损 15 才盖得住。钱不够用上面「稳定侦察」的 0.001 条。">参考图 · 0.01四档+侦察</button>
+        </div>
+        <div class="preset-label">缩到约 10u 能扛住再下一把</div>
+        <div class="presets">
+          <button type="button" data-ladder="0.005,0.01,0.03,0.08,0.215" data-max="5" data-risk="medium" data-loss="0.80" data-win="0.25" data-toast="中等五档对半。满爬 0.34；再下一把 +0.215。止损 0.80 够约两次再下，止盈 0.25。">中等五档对半</button>
+          <button type="button" data-ladder="0.001,0.002,0.006,0.016,0.043" data-max="5" data-risk="medium" data-loss="0.15" data-win="0.05" data-toast="中等五档缩到 0.001。满爬 0.068；再下一把 +0.043。止损 0.15，止盈 0.05。">中等五档缩到 0.001</button>
+          <button type="button" data-ladder="0.0001,0.0002,0.0006,0.0016,0.0043" data-max="5" data-risk="medium" data-loss="0.02" data-win="0.005" data-toast="中等五档缩到 0.0001。满爬 0.0068。用来核对选号和留号，不是用来赚。">中等五档缩到 0.0001</button>
+          <button type="button" data-ladder="0.0005,0.0055,0.06,0.665" data-max="4" data-risk="low" data-loss="1.50" data-win="0.18" data-toast="低等四档对半。满爬 0.73；第4档再下一把 +0.665。止损 1.50 够一次再下，止盈 0.18。">低等四档对半</button>
+          <button type="button" data-ladder="0.0001,0.0011,0.012,0.133" data-max="4" data-risk="low" data-loss="0.30" data-win="0.035" data-toast="低等四档缩到 0.0001。满爬 0.146；再下一把 +0.133。止损 0.30，止盈 0.035。">低等四档缩到 0.0001</button>
+        </div>
+        <div class="preset-label">探针</div>
+        <div class="presets">
+          <button type="button" data-ladder="0.0001,0.001,0.01,0.05" data-max="4" data-risk="low" data-loss="0.08" data-win="" data-toast="探针四档。止盈空着，只用来看选号和留号。">探针四档</button>
+          <button type="button" data-ladder="0.0001" data-max="1" data-risk="low" data-loss="0.01" data-win="" data-toast="只打 0.0001，没有阶段。止损 0.01，止盈空着。">只打 0.0001</button>
+        </div>
+      </div>
+      <p class="hint" id="preset-hint">先点「灵魂托管」，勾允许真钱，点开始。Ctrl+F5 刷新后再点。</p>
+      <label class="fld keep-on">赢了留号
+        <select id="keep-on-win">
+          <option value="1" selected>ON（赢了就留）</option>
+          <option value="0">OFF（每局新开）</option>
+        </select>
+      </label>
+
+      <h3>侦察系统（全策略共用）</h3>
+      <label class="fld">侦察 ON/OFF
+        <select id="recon-on">
+          <option value="0">OFF</option>
+          <option value="1" selected>ON</option>
+        </select>
+      </label>
+      <label class="fld">侦察模式
+        <select id="recon-mode">
+          <option value="count" selected>计数（N败/N胜）</option>
+        </select>
+      </label>
+      <label class="fld">开始阶段 <input id="recon-start" value="1"></label>
+      <label class="fld">N 败后进实战 <input id="recon-n-loss" value="0"></label>
+      <label class="fld">N 胜后进实战 <input id="recon-n-win" value="1"></label>
+      <label class="fld">实战 N 局 <input id="recon-real-n" value="1"></label>
+      <label class="fld">实战号码
+        <select id="recon-numbers">
+          <option value="fixed" selected>固定（保持）</option>
+          <option value="reshuffle">重选</option>
+        </select>
+      </label>
+      <label class="fld">侦察最小金额 <input id="recon-min" value="0.0001"></label>
+      <label class="fld">侦察最大金额 <input id="recon-max" value="0.0001"></label>
+      <label class="check"><input id="recon-return-win" type="checkbox" checked> 实战赢了或顶档输了回侦察</label>
+      <label class="check"><input id="recon-abort-loss" type="checkbox"> 实战一输就回侦察（连 2 档都不打）</label>
+      <label class="fld">实战连败几把回探针
+        <input id="recon-abort-after" type="number" min="0" value="0">
+      </label>
+      <p class="hint">填 0：二连败照爬，第 4 档能吃到（低等时大约 25 局才 1 次二连败，4 连败更少）。填 2：不爬 3/4 档，13.3 吃不到。</p>
+
+      <h3>AI</h3>
+      <label class="fld">用 AI
+        <select disabled><option>OFF</option></select>
+      </label>
+      <p class="hint">不加 AI。选号不改开奖；何时跑/停/歇已经是规则，LLM 只会找理由加注。</p>
+
+      <button class="btn green wide" id="btn-save">保存设置</button>
+
+      <h3>自动模式</h3>
+      <label class="fld">这次叫什么（自己起名，方便以后对比）
+        <input id="run-name" placeholder="例如：录像低等四档">
+      </label>
+      <p class="hint">真钱和托管在最顶上那条黄条。点「开始托管」挂着跑。下面「开始」只打一轮就停。</p>
+      <div class="auto-row">
+        <button class="btn green" id="btn-start" disabled>开始（只打一轮）</button>
+        <button class="btn red" id="btn-stop" disabled>停止</button>
+        <button class="btn ghost" id="btn-reset">重置</button>
+      </div>
+      <button class="btn ghost wide" id="btn-loop" disabled>旧·立刻下一轮（不歇，不要用）</button>
+      <p class="hint">无限跑 = 绿了立刻下一轮，会把绿吐回去。托管才是歇完再开。</p>
+      <div class="run-line" id="progress">统计重置后点开始</div>
+      <div class="run-line" id="soul-note">对局分析会写在这里</div>
+    </aside>
+  </section>
+
+  <section class="card">
+    <h2>分次记录</h2>
+    <p class="hint">每一局都在本地永久保存。列表如果丢了会从局里自动补回来。点卡片看等级 / 连败 / 命中和累计曲线。按日期、名字、策略筛。</p>
+    <div class="run-filters">
+      <label>从 <input type="date" id="run-from"></label>
+      <label>到 <input type="date" id="run-to"></label>
+      <button type="button" class="btn ghost" id="run-today">今天</button>
+      <button type="button" class="btn ghost" id="run-all-days">全部日期</button>
+      <label>名字 <input id="run-q" placeholder="搜名字 / 时间 / 梯子"></label>
+      <label>策略
+        <select id="run-strategy">
+          <option value="">全部策略</option>
+        </select>
+      </label>
+      <label>本页
+        <select id="run-page-size">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="30">30</option>
+          <option value="50">50</option>
+        </select>
+      </label>
+    </div>
+    <div id="run-pager" class="pager"></div>
+    <div id="run-list" class="run-list"></div>
+    <div id="run-pager-bottom" class="pager"></div>
+  </section>
+  <section class="card">
+    <h2>这一次明细 <span class="sub" id="current-run-label">当前</span></h2>
+    <div class="run-filters">
+      <label>本页
+        <select id="hist-page-size">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="30" selected>30</option>
+          <option value="50">50</option>
+        </select>
+      </label>
+      <div id="hist-pager" class="pager"></div>
+    </div>
+    <div class="table-wrap hist"><table id="tbl-hist"></table></div>
+  </section>
+  <section class="card pnl-board" id="pnl-board">
+    <h2>资金看板 <span class="sub">跟局刷新 · 按自然日，不是按一轮</span></h2>
+    <p class="hint">点方框看今天 / 近7天 / 近30天。自选填日期。收益率 = 盈亏 ÷ 投资金。曲线从该区间第一局累到现在。</p>
+    <div class="pnl-chips" id="pnl-chips">
+      <button type="button" class="on" data-pnl="today">今天</button>
+      <button type="button" data-pnl="d7">近7天</button>
+      <button type="button" data-pnl="d30">近30天</button>
+      <button type="button" data-pnl="custom">自选区间</button>
+      <label>从 <input type="date" id="pnl-from"></label>
+      <label>到 <input type="date" id="pnl-to"></label>
+    </div>
+    <div class="pnl-boxes" id="pnl-boxes"></div>
+    <div class="pnl-kpis" id="pnl-kpis"></div>
+    <div id="pnl-chart" class="equity"></div>
+  </section>
+</main>
+<div id="run-modal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2 id="modal-title">这次记录</h2>
+      <div>
+        <button class="btn ghost" id="modal-export">导出</button>
+        <button class="btn ghost" id="modal-close">关闭</button>
+      </div>
+    </div>
+    <p class="hint" id="modal-brief"></p>
+    <div class="modal-hero" id="modal-hero"></div>
+    <h3>资金变化（累计盈亏）</h3>
+    <p class="hint">从第 1 局滚到最后一局，账上加起来到哪。单局盈亏在下面表格里。</p>
+    <div id="modal-equity" class="equity"></div>
+    <div class="modal-grid">
+      <section>
+        <h3>等级统计</h3>
+        <div class="table-wrap"><table id="modal-tbl-level"></table></div>
+      </section>
+      <section>
+        <h3 class="warn">连败统计 <span class="sub" id="modal-streak-cap">最大 0连败 | 当前 0连败</span></h3>
+        <div class="table-wrap"><table id="modal-tbl-streak"></table></div>
+      </section>
+    </div>
+    <h3>命中统计</h3>
+    <div class="table-wrap"><table id="modal-tbl-hits"></table></div>
+    <h3>每一局</h3>
+    <div class="table-wrap hist"><table id="modal-hist"></table></div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/static/live.js?v=l4-budget-1"></script>
+</body>
+</html>

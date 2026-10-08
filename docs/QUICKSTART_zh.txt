@@ -1,0 +1,36 @@
+Keno BOT —— Windows 快速开始
+=================================
+
+一、跑起来（不用装 Python）
+1. 双击 KenoBOT.exe（或 启动.bat）。
+2. 程序会在本机起一个页面，并自动用默认浏览器打开 http://127.0.0.1:端口/live
+   —— 端口默认 8000，被占用时自动换 8001、8002、8765、8787、18765；
+   实际用的端口写在程序的状态目录里的 lab.url。
+3. 页面里全是本地模拟（纸面模式）：随便点，不会碰真钱。
+
+二、状态文件写在哪
+   %LOCALAPPDATA%\KenoBOT
+   （想换位置就设环境变量 KENO_BOT_HOME，例如：
+     set KENO_BOT_HOME=D:\KenoBOT_state  —— 然后从同一个命令行启动 exe）
+
+三、想连真实账号（默认关闭，你自己决定）
+1. 先用一个「带调试端口」的 Chrome 登录平台并打开 Keno 页面：
+     "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
+       --remote-debugging-port=9222 --user-data-dir=%TEMP%\keno-chrome
+2. 在实盘台上点 [连接浏览器]（只读）：它会读取页面自己发出的请求头，把会话令牌**只放在内存**里，
+   不会写到磁盘。
+3. 确认页面上显示的余额/局数与真实一致后，才勾选 [允许真钱] 并点 [开始托管]。
+4. 想停：点 [停止]；或者直接关掉程序。
+
+四、可验证公平性（想自己验一遍）
+   把程序目录当工作目录，用 Python 跑：
+     set PYTHONPATH=src
+     python -m keno.cli verify-rounds ^
+       --replay-file data/samples/rounds_sample.jsonl ^
+       --seeds-file  data/samples/seeds_sample.json
+   预期输出 240/240 rounds PASS。把种子文件里任何一个字符改掉，立刻变 FAIL。
+
+五、免责声明
+   Keno 是负期望游戏。作者的实盘记录是**亏损**的（9,331 局，净 -8.8964 U，实测 RTP 92.66%），
+   仓库里的蒙特卡洛说明这属于正常方差区间。这个工具不承诺任何收益，
+   请只使用你输得起的钱，并遵守你所在地区的法律与平台条款。

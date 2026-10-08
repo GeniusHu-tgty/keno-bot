@@ -1,0 +1,10 @@
+# PhaseMachine 参数（复刻参考工具截图结构；触发规则为显式重构假设，非已证事实）
+# Stake 平台最低注 0.0001u；下列注额全部为其整数倍（探针=1x, 恢复=100x, 取利=1000x, 收尾=6000x）。
+version: "phase-ladder-2026-09-11"
+probe_bet: "0.0001"        # 探针注 = 平台最低注
+recovery_bet: "0.01"       # 恢复注，直到首胜
+window_bet: "0.10"         # 取利窗口固定注
+profit_rounds: 12          # 取利窗口长度（截图每周期 12~15 局）
+final_bet: "0.60"          # 收尾单发，之后 block 结束
+probes_to_enter: 2         # 冷却结束后需连续探针成功次数
+probe_cooldown: 18         # block 结束后的最少探针局数（校准 探针:实际 ≈ 1.2）
